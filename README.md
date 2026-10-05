@@ -34,6 +34,7 @@ wine-view is [browser-use/browser-harness](https://github.com/browser-use/browse
 | Tab marker | 🐴 | 🍷 |
 | Telemetry | PostHog events on every command (opt-out) | **removed** (`telemetry.py` is a no-op stub) |
 | Update check | daily PyPI version check | **removed**; update with `git pull` |
+| First attach on local Chrome | attaches to your first open tab (slow if it is a busy background tab) | opens/reuses its own blank background tab — never touches your tabs (fresh start ~13s → ~1.9s) |
 | Chrome "Allow remote debugging?" prompt | click Allow or run `mac-approve` | optional auto-allow: set `WV_AUTO_APPROVE=1` (macOS, needs Accessibility permission for your terminal) |
 
 Nothing is sent anywhere except the sites you drive, plus Browser Use Cloud only if you set `WINE_VIEW_API_KEY`.
