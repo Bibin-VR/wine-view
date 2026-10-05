@@ -608,6 +608,15 @@ def ensure_daemon(wait=None, name=None, env=None):
             if local and not approval_waiting and log_tail.startswith("handshake-wait"):
                 approval_waiting = True
                 deadline = None if approval_wait is None else max(deadline, spawned + approval_wait)
+            if (
+                local
+                and sys.platform == "darwin"
+                and log_tail.startswith("handshake-wait")
+                and os.environ.get("WV_AUTO_APPROVE", "").strip().lower() in {"1", "true", "yes", "on"}
+            ):
+                # Opt-in (user-requested): press Chrome's "Allow remote debugging?" Allow button.
+                from .macos import _APPLESCRIPT
+                subprocess.run(["osascript", "-e", _APPLESCRIPT], capture_output=True, timeout=5)
             if not hinted and time.monotonic() - spawned > 2 and log_tail.startswith("handshake-wait"):
                 daemon_name = name or NAME
                 approve_command = (
