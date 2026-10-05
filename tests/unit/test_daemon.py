@@ -470,19 +470,19 @@ def test_named_daemon_creates_dedicated_tab(monkeypatch):
     assert enabled == {"Page.enable", "DOM.enable", "Runtime.enable", "Network.enable"}
 
 
-def test_default_daemon_still_attaches_first_page(monkeypatch):
-    """The default daemon keeps reusing the user's first real page."""
+def test_default_daemon_does_not_grab_user_tab_on_local_chrome(monkeypatch):
+    """wine-view: on local Chrome the default daemon opens its own background tab."""
     monkeypatch.setattr(daemon, "NAME", "default")
     monkeypatch.setattr(daemon, "REMOTE_ID", None)
+    monkeypatch.setattr(daemon, "BROWSER_KIND", "local")
     existing = [{"targetId": "user-tab", "url": "https://example.com/", "type": "page"}]
     d = daemon.Daemon()
     d.cdp = _AttachCDP(existing)
 
     page = asyncio.run(d.attach_first_page())
 
-    assert page["targetId"] == "user-tab"
-    assert d.dedicated_target_id is None
-    assert d.cdp.created == 0
+    assert page["targetId"] != "user-tab"
+    assert d.cdp.created == 1
 
 
 def test_default_daemon_creates_missing_page_in_background(monkeypatch):

@@ -14,3 +14,8 @@ def make_png(width, height):
 @pytest.fixture
 def fake_png():
     return make_png
+
+
+@pytest.fixture(autouse=True)
+def _no_auto_approve(monkeypatch):
+    monkeypatch.delenv("WV_AUTO_APPROVE", raising=False)

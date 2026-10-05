@@ -481,7 +481,9 @@ class Daemon:
                 await self._enable_default_domains(self.session)
             return page
 
-        pages = [t for t in targets if is_real_page(t)]
+        # wine-view: never grab the user's existing tabs on local Chrome; a busy
+        # background tab (e.g. Gmail) makes attach and the first call slow.
+        pages = [] if BROWSER_KIND == "local" else [t for t in targets if is_real_page(t)]
         if not pages:
             # Fresh browser (ex: BU cloud) starts w about:blank; reuse it
             pages = [t for t in targets if is_reusable_blank_page(t)]
