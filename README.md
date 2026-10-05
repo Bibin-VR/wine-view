@@ -19,6 +19,41 @@ Paste the setup prompt into your coding agent.
 
 **You will never use the browser again.**
 
+
+## What's different in this fork
+
+wine-view is [browser-use/browser-harness](https://github.com/browser-use/browser-harness) 0.1.13 (MIT, © Browser Use), renamed and made private-by-default:
+
+| Change | Upstream | wine-view |
+|---|---|---|
+| CLI | `browser-harness`, `browser-harness-mcp` | `wine-view`, `wine-view-mcp` |
+| Python package | `browser_harness` | `wine_view` |
+| Config dir | `~/.config/browser-harness` | `~/.config/wine-view` |
+| Env vars | `BH_*`, `BU_*`, `BROWSER_HARNESS_*`, `BROWSER_USE_*` | `WV_*`, `WINE_VIEW_*` |
+| Runtime files | `bu-<name>.sock/.pid/.log` | `wv-<name>.sock/.pid/.log` |
+| Tab marker | 🐴 | 🍷 |
+| Telemetry | PostHog events on every command (opt-out) | **removed** (`telemetry.py` is a no-op stub) |
+| Update check | daily PyPI version check | **removed**; update with `git pull` |
+| Chrome "Allow remote debugging?" prompt | click Allow or run `mac-approve` | optional auto-allow: set `WV_AUTO_APPROVE=1` (macOS, needs Accessibility permission for your terminal) |
+
+Nothing is sent anywhere except the sites you drive, plus Browser Use Cloud only if you set `WINE_VIEW_API_KEY`.
+
+### Install
+
+```bash
+git clone https://github.com/Bibin-VR/wine-view.git ~/Developer/wine-view
+uv tool install --python 3.12 -e ~/Developer/wine-view
+ln -s ~/Developer/wine-view/skills/wine-view ~/.claude/skills/wine-view   # Claude Code skill
+```
+
+Then enable remote debugging at `chrome://inspect/#remote-debugging`. To stop auto-allowing, unset `WV_AUTO_APPROVE`; to cut access entirely, turn remote debugging off.
+
+### Syncing with upstream
+
+```bash
+git fetch upstream && git merge upstream/main   # then re-apply the rename to new text, run `pytest tests/unit`, and check no telemetry/update calls came back
+```
+
 ## See it work
 
 **Task:** "Open my X profile, find my latest 20 video posts, and download them."

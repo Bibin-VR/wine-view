@@ -276,7 +276,7 @@ GET /wapi/zpgeek/common/data/city/site.json
 
 ## DOM Extraction (fallback)
 
-If the API path is blocked, fall back to DOM extraction. Note that salary text uses font-encoded private-use Unicode characters (U+E000–U+F8FF) — DOM `textContent` returns unreadable PUA codepoints like `"-K"` instead of the rendered digits.
+If the API path is blocked, fall back to DOM extraction. Note that salary text uses font-encoded private-use Unicode characters (U+E000–U+F8FF) — DOM `textContent` returns unreadable PUA codepoints like `"-K"` instead of the rendered digits.
 
 ### Job Card DOM
 

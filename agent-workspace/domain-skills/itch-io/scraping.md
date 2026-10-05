@@ -433,4 +433,4 @@ Use HTML scraping or RSS for unauthenticated game data.
 
 9. **RSS is capped at 36 items per page.** Paginate with `?page=N`. Very high page numbers (300+) return HTTP 404 on browse pages.
 
-10. **Unicode zero-width space in some titles.** `\u200b` (zero-width space) appears at the start of certain titles (e.g. "​Our Life: Beginnings & Always"). Strip with `.replace('\u200b', '').strip()` or `.strip()` alone won't remove it — use `title.replace('\u200b', '').strip()`.
+10. **Unicode zero-width space in some titles.** `\u200b` (zero-width space) appears at the start of certain titles (e.g. "Our Life: Beginnings & Always"). Strip with `.replace('\u200b', '').strip()` or `.strip()` alone won't remove it — use `title.replace('\u200b', '').strip()`.
