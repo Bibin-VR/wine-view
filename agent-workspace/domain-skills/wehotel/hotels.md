@@ -14,7 +14,7 @@ direct-booking portal of the Jin Jiang group, covering ~50 sub-brands
   parameter-schema gate, no `¥?` placeholders.
 - `http_get` does not work (SPA shell only). Need a browser session.
 - Browser cookies aren't required either — a freshly-opened tab via
-  `browser-harness` immediately renders 200+ hotels with prices.
+  `wine-view` immediately renders 200+ hotels with prices.
 - Detail pages show full rate-plan breakdown (multiple room types ×
   breakfast/cancellation matrix) anonymously.
 - Compared to: ly.com forces login for every price; ctrip works only via a
@@ -56,7 +56,7 @@ dates, so two equivalent paths work:
 ### Path A — drive the homepage form
 
 ```python
-from browser_harness.helpers import new_tab, wait_for_load, click_at_xy, js, type_text
+from wine_view.helpers import new_tab, wait_for_load, click_at_xy, js, type_text
 import time
 
 new_tab("https://www.bestwehotel.com/")
@@ -231,7 +231,7 @@ not exposed on `window`. **Use DOM extraction.**
 
 ```python
 import time, json
-from browser_harness.helpers import new_tab, wait_for_load, js, cdp
+from wine_view.helpers import new_tab, wait_for_load, js, cdp
 
 url = (
     "https://www.bestwehotel.com/HotelSearch/"

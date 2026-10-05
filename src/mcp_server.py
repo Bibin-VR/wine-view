@@ -1,12 +1,12 @@
 # MIT License
 # Copyright (c) 2026 Browser Use
 # See LICENSE for details.
-"""MCP server exposing browser-harness helpers over stdio.
+"""MCP server exposing wine-view helpers over stdio.
 
 Run:
     uv run python -m mcp_server
 
-The server starts on stdio and exposes one MCP tool per browser-harness
+The server starts on stdio and exposes one MCP tool per wine-view
 helper. Each tool ensures the daemon is running, calls the existing helper,
 and returns JSON text. Helper failures use MCP's tool-error channel.
 """
@@ -25,8 +25,8 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from PIL import Image
 
-from browser_harness.admin import ensure_daemon
-from browser_harness.helpers import (
+from wine_view.admin import ensure_daemon
+from wine_view.helpers import (
     capture_screenshot,
     cdp,
     click_at_xy,
@@ -52,7 +52,7 @@ from browser_harness.helpers import (
     wait_for_load,
 )
 
-SERVER = MCPServer("browser-harness")
+SERVER = MCPServer("wine-view")
 
 
 def _normalize(value: Any) -> Any:
@@ -100,7 +100,7 @@ def _dump(value: Any) -> str:
 def _stderr_stdout():
     """Redirect stdout to stderr for the duration of the context.
 
-    Some browser-harness helpers (start_recording, stop_recording) print status
+    Some wine-view helpers (start_recording, stop_recording) print status
     messages. Under MCP stdio, any stdout output that isn't a valid JSON-RPC
     message corrupts the protocol. Redirect stdout → stderr so those messages
     reach the client's logs without breaking the wire format.
@@ -292,7 +292,7 @@ def browser_stop_recording():
 
 
 def main() -> None:
-    """Run the Browser Harness MCP server over stdio."""
+    """Run the Wine View MCP server over stdio."""
     SERVER.run()
 
 

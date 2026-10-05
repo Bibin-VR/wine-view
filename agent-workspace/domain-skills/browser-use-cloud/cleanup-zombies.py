@@ -5,13 +5,13 @@ folder — running it exercises GET /browsers + PATCH /browsers/{id}/stop on
 the public API and surfaces every wire-shape gotcha the skill documents.
 
 Usage:
-    BROWSER_USE_API_KEY=... python cleanup-zombies.py
+    WINE_VIEW_API_KEY=... python cleanup-zombies.py
         # stop browsers running longer than 30 minutes (default)
 
-    BROWSER_USE_API_KEY=... python cleanup-zombies.py --older-than 5 --dry-run
+    WINE_VIEW_API_KEY=... python cleanup-zombies.py --older-than 5 --dry-run
         # preview only; no PATCH /stop sent
 
-    BROWSER_USE_API_KEY=... python cleanup-zombies.py --json
+    WINE_VIEW_API_KEY=... python cleanup-zombies.py --json
         # machine-readable output (one record per browser inspected)
 
 Exit codes:
@@ -34,9 +34,9 @@ API = "https://api.browser-use.com/api/v3"
 
 
 def _headers() -> dict[str, str]:
-    key = os.environ.get("BROWSER_USE_API_KEY")
+    key = os.environ.get("WINE_VIEW_API_KEY")
     if not key:
-        sys.exit("BROWSER_USE_API_KEY is not set")
+        sys.exit("WINE_VIEW_API_KEY is not set")
     return {
         "X-Browser-Use-API-Key": key,
         "Content-Type": "application/json",

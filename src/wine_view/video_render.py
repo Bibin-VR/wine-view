@@ -100,11 +100,11 @@ def serve(recording: Path):
 
 
 def _harness_command() -> list[str]:
-    return [sys.executable, "-m", "browser_harness.run"]
+    return [sys.executable, "-m", "wine_view.run"]
 
 
 def run_harness(code: str, timeout: float = 60) -> dict:
-    env = {**os.environ, "BH_RECORD": "0"}
+    env = {**os.environ, "WV_RECORD": "0"}
     proc = subprocess.run(
         _harness_command(),
         input=code,
@@ -418,7 +418,7 @@ def export(recording: Path, output_name: str, reviewed: bool) -> int:
         raise RuntimeError("ffmpeg and ffprobe are required")
     review_path = recording / "renderer-review.json"
     if not review_path.is_file():
-        raise RuntimeError("run browser-harness video review first")
+        raise RuntimeError("run wine-view video review first")
     review_report = json.loads(review_path.read_text(encoding="utf-8"))
     if review_report.get("errors"):
         raise RuntimeError("renderer review has blocking errors")

@@ -10,15 +10,15 @@ manufacture missing footage. For a post-task recording, verify `meta.json` and
 `events.jsonl` match the task.
 
 ```bash
-browser-harness video init <recording> --require-explicit
+wine-view video init <recording> --require-explicit
 # write <recording>/edit-brief.json
-browser-harness video review <recording>
+wine-view video review <recording>
 # inspect video-review-contact-sheet.jpg and every image in .privacy-review/
-browser-harness video export <recording> --reviewed
+wine-view video export <recording> --reviewed
 ```
 
 Omit `--require-explicit` only for a verified post-task recording. In a source
-checkout use `./browser-harness`. Never edit generated `composition.js` or
+checkout use `./wine-view`. Never edit generated `composition.js` or
 `video.html`; change the brief or shared implementation. Export never
 overwrites an existing video, so use `--output video-v2.mp4` for another cut.
 

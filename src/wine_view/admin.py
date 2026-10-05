@@ -125,9 +125,9 @@ def _load_env_file(p):
 
 _load_env()
 
-NAME = os.environ.get("BU_NAME", "default")
-BU_API = "https://api.browser-use.com/api/v3"
-PYPI_JSON = "https://pypi.org/pypi/browser-harness/json"
+NAME = os.environ.get("WV_NAME", "default")
+WV_API = "https://api.browser-use.com/api/v3"
+PYPI_JSON = "https://pypi.org/pypi/wine-view/json"
 VERSION_CACHE = paths.config_dir() / "version-cache.json"
 VERSION_CACHE_TTL = 24 * 3600
 DOCTOR_TEXT_LIMIT = 140
@@ -163,7 +163,7 @@ def _is_daemon_process(pid):
     out = result.stdout
     if not out.strip():
         return False
-    return "browser_harness" in out
+    return "wine_view" in out
 
 
 def _pending_pid_record(path):
@@ -350,10 +350,10 @@ def _is_local_chrome_mode(env=None):
     """True when the daemon discovers a local Chrome instead of a remote CDP WS."""
     env = env or {}
     return not (
-        env.get("BU_CDP_WS")
-        or env.get("BU_CDP_URL")
-        or os.environ.get("BU_CDP_WS")
-        or os.environ.get("BU_CDP_URL")
+        env.get("WV_CDP_WS")
+        or env.get("WV_CDP_URL")
+        or os.environ.get("WV_CDP_WS")
+        or os.environ.get("WV_CDP_URL")
     )
 
 
@@ -390,15 +390,15 @@ def daemon_browser_kind(name=None):
 
 
 def _daemon_endpoint_names():
-    # BH_RUNTIME_DIR isolates one daemon per dir → no filename-prefix discovery,
-    # just check whether our local endpoint exists. Without BH_RUNTIME_DIR, or
-    # with BH_RUNTIME_DIR_SHARED=1, _RUNTIME is shared and we glob `bu-*.<suffix>`
+    # WV_RUNTIME_DIR isolates one daemon per dir → no filename-prefix discovery,
+    # just check whether our local endpoint exists. Without WV_RUNTIME_DIR, or
+    # with WV_RUNTIME_DIR_SHARED=1, _RUNTIME is shared and we glob `wv-*.<suffix>`
     # to find every daemon in that runtime dir.
     suffix = ".port" if ipc.IS_WINDOWS else ".sock"
-    if ipc.BH_RUNTIME_DIR and not ipc.BH_RUNTIME_DIR_SHARED:
-        return [NAME] if (ipc._RUNTIME / f"bu{suffix}").exists() else []
+    if ipc.WV_RUNTIME_DIR and not ipc.WV_RUNTIME_DIR_SHARED:
+        return [NAME] if (ipc._RUNTIME / f"wv{suffix}").exists() else []
     names = []
-    for p in sorted(ipc._RUNTIME.glob(f"bu-*{suffix}")):
+    for p in sorted(ipc._RUNTIME.glob(f"wv-*{suffix}")):
         raw = p.name[3:-len(suffix)]
         try:
             ipc._check(raw)
@@ -432,7 +432,7 @@ def daemon_browser_ready(name=None):
 
 
 def browser_connections():
-    """Live browser-harness daemons with healthy CDP browser connections and their attached page."""
+    """Live wine-view daemons with healthy CDP browser connections and their attached page."""
     out = []
     for name in _daemon_endpoint_names():
         conn = _daemon_browser_connection(name)
@@ -442,7 +442,7 @@ def browser_connections():
 
 
 def active_browser_connections():
-    """Count live browser-harness daemons with a healthy CDP browser connection."""
+    """Count live wine-view daemons with a healthy CDP browser connection."""
     return len(browser_connections())
 
 
@@ -469,11 +469,11 @@ def _doctor_snap_probe_path(path: str) -> str:
 def _doctor_probe_chrome_binary_for_snap():
     """Return (label, probe_path) for the first Chrome/Chromium binary found, else (None, None).
 
-    Honors BH_CHROME_PATH and CHROME_PATH before searching PATH for common names.
+    Honors WV_CHROME_PATH and CHROME_PATH before searching PATH for common names.
     """
     import shutil
 
-    for key in ("BH_CHROME_PATH", "CHROME_PATH"):
+    for key in ("WV_CHROME_PATH", "CHROME_PATH"):
         raw = (os.environ.get(key) or "").strip()
         if not raw:
             continue
@@ -495,15 +495,15 @@ def _doctor_probe_chrome_binary_for_snap():
 
 
 def _snap_linux_headless_doc_url():
-    return "https://github.com/browser-use/browser-harness/blob/main/docs/snap-linux-headless.md"
+    return "https://github.com/Bibin-VR/wine-view/blob/main/docs/snap-linux-headless.md"
 
 
 def run_doctor_fix_snap():
     """Print steps to replace Snap Chromium with a native Chrome for CDP. Always exit 0."""
     doc = _snap_linux_headless_doc_url()
-    print("browser-harness doctor --fix-snap")
+    print("wine-view doctor --fix-snap")
     print()
-    print("Snap-packaged Chromium cannot expose DevTools the way browser-harness needs.")
+    print("Snap-packaged Chromium cannot expose DevTools the way wine-view needs.")
     print(f"Full background: {doc}")
     print()
     print("1. Install Google Chrome from Google's .deb (not the Snap store):")
@@ -512,12 +512,12 @@ def run_doctor_fix_snap():
     print()
     print("2. Point the harness (and your shell) at the native binary so PATH does not")
     print("   pick the Snap wrapper first. Example for bash (~/.bashrc or session env):")
-    print("   export BH_CHROME_PATH=/usr/bin/google-chrome-stable")
+    print("   export WV_CHROME_PATH=/usr/bin/google-chrome-stable")
     print("   # CHROME_PATH is also honored by doctor's snap probe if you prefer that name.")
     print()
     print("3. Launch Chrome from that path (Way 2) or open Chrome normally (Way 1),")
     print("   enable remote debugging per install.md, then verify:")
-    print("   browser-harness --doctor")
+    print("   wine-view --doctor")
     print()
     return 0
 
@@ -559,7 +559,7 @@ def ensure_daemon(wait=None, name=None, env=None):
     launched_browser = None
     opened_inspect = False
     for _ in range(3):
-        e = {**os.environ, **({"BU_NAME": name} if name else {}), **(env or {})}
+        e = {**os.environ, **({"WV_NAME": name} if name else {}), **(env or {})}
         try:
             stderr_sink = open(ipc.log_path(name or NAME), "ab")
         except OSError:
@@ -567,7 +567,7 @@ def ensure_daemon(wait=None, name=None, env=None):
         if local:
             with _spawn_lock(name, timeout=startup_wait) as lock:
                 if lock.fd is None:
-                    raise RuntimeError("daemon-starting: another browser-harness daemon is still starting; retry later")
+                    raise RuntimeError("daemon-starting: another wine-view daemon is still starting; retry later")
                 if daemon_alive(name):
                     if stderr_sink is not subprocess.DEVNULL:
                         stderr_sink.close()
@@ -577,14 +577,14 @@ def ensure_daemon(wait=None, name=None, env=None):
                     p = None
                 else:
                     p = subprocess.Popen(
-                        [sys.executable, "-m", "browser_harness.daemon"],
+                        [sys.executable, "-m", "wine_view.daemon"],
                         env=e, stdout=subprocess.DEVNULL, stderr=stderr_sink, **ipc.spawn_kwargs(),
                     )
                     _publish_pid(ipc.pid_path(name or NAME), p.pid)
                     pending_pid = p.pid
         else:
             p = subprocess.Popen(
-                [sys.executable, "-m", "browser_harness.daemon"],
+                [sys.executable, "-m", "wine_view.daemon"],
                 env=e, stdout=subprocess.DEVNULL, stderr=stderr_sink, **ipc.spawn_kwargs(),
             )
         if stderr_sink is not subprocess.DEVNULL:
@@ -611,9 +611,9 @@ def ensure_daemon(wait=None, name=None, env=None):
             if not hinted and time.monotonic() - spawned > 2 and log_tail.startswith("handshake-wait"):
                 daemon_name = name or NAME
                 approve_command = (
-                    "browser-harness mac-approve"
+                    "wine-view mac-approve"
                     if daemon_name == "default"
-                    else f"BU_NAME={daemon_name} browser-harness mac-approve"
+                    else f"WV_NAME={daemon_name} wine-view mac-approve"
                 )
                 action = (
                     f"run `{approve_command}` in another shell or click Allow"
@@ -621,7 +621,7 @@ def ensure_daemon(wait=None, name=None, env=None):
                     else "click Allow"
                 )
                 print(
-                    f'browser-harness: Chrome is asking "Allow remote debugging?" — {action} to continue.',
+                    f'wine-view: Chrome is asking "Allow remote debugging?" — {action} to continue.',
                     file=sys.stderr,
                 )
                 hinted = True
@@ -644,7 +644,7 @@ def ensure_daemon(wait=None, name=None, env=None):
                 # create another Chrome prompt and recreate the retry loop.
                 raise RuntimeError(
                     "permission-blocked: the pending Chrome connection ended before approval; "
-                    "browser-harness did not retry or create another connection."
+                    "wine-view did not retry or create another connection."
                 )
             continue
         if local and msg.startswith("handshake-wait"):
@@ -653,16 +653,16 @@ def ensure_daemon(wait=None, name=None, env=None):
             # one, which is how a single approval turned into an endless prompt.
             raise RuntimeError(
                 "permission-blocked: Chrome's Allow popup is still open and the pending daemon was left running. "
-                "Approve that exact popup; browser-harness did not retry or create another connection."
+                "Approve that exact popup; wine-view did not retry or create another connection."
             )
         if local and _needs_chrome_permission_popup(msg):
             print(
-                'browser-harness: Chrome is asking "Allow remote debugging?". '
+                'wine-view: Chrome is asking "Allow remote debugging?". '
                 "Approve that exact popup; no replacement connection was started.",
                 file=sys.stderr,
             )
             raise RuntimeError(
-                "permission-blocked: Chrome did not approve the connection; browser-harness did not retry or create another connection."
+                "permission-blocked: Chrome did not approve the connection; wine-view did not retry or create another connection."
             )
         if local and launched_browser is None and _chrome_not_running(msg):
             # Chrome is closed — launch the browser and retry
@@ -672,7 +672,7 @@ def ensure_daemon(wait=None, name=None, env=None):
                 raise RuntimeError(
                     "chrome-not-running: no supported browser is running and none could be launched -- ask the user to open Chrome, then retry."
                 )
-            print("browser-harness: Chrome isn't running — launching it. If Chrome shows an \"Allow remote debugging?\" popup, click Allow.", file=sys.stderr)
+            print("wine-view: Chrome isn't running — launching it. If Chrome shows an \"Allow remote debugging?\" popup, click Allow.", file=sys.stderr)
             from .daemon import supported_browser_running
             boot_deadline = time.time() + 15
             while time.time() < boot_deadline and not supported_browser_running():
@@ -684,12 +684,12 @@ def ensure_daemon(wait=None, name=None, env=None):
             if remote_debugging_user_enabled():
                 # chrome://inspect toggle is already on — connection died
                 print(
-                    'browser-harness: Chrome is asking "Allow remote debugging?". '
+                    'wine-view: Chrome is asking "Allow remote debugging?". '
                     "Approve that exact popup; no replacement connection was started.",
                     file=sys.stderr,
                 )
                 raise RuntimeError(
-                    "permission-blocked: Chrome did not approve the connection; browser-harness did not retry or create another connection."
+                    "permission-blocked: Chrome did not approve the connection; wine-view did not retry or create another connection."
                 )
             restart_daemon(name)
             _open_chrome_inspect_once()
@@ -738,7 +738,7 @@ def stop_remote_daemon(name="remote"):
     state in the session is persisted."""
     # restart_daemon is misnamed — it only stops the daemon (sends
     # shutdown, SIGTERMs if needed, unlinks socket+pid). It never
-    # restarts anything on its own; a follow-up `browser-harness`
+    # restarts anything on its own; a follow-up `wine-view`
     # call would auto-spawn a fresh one via ensure_daemon(). That
     # "run-it-again-to-restart" workflow is why it was named that way.
     restart_daemon(name, require_clean=True)
@@ -748,7 +748,7 @@ def restart_daemon(name=None, require_clean=False):
     """Best-effort daemon shutdown + socket/pid cleanup.
 
     Name is historical: callers typically follow this with another
-    `browser-harness` invocation, which auto-spawns a fresh daemon via
+    `wine-view` invocation, which auto-spawns a fresh daemon via
     ensure_daemon(). The function itself only stops.
 
     With require_clean=True, an unavailable daemon or any response other than
@@ -884,9 +884,9 @@ def restart_daemon(name=None, require_clean=False):
 
 
 def _browser_use(path, method, body=None):
-    key = auth.get_browser_use_api_key()
+    key = auth.get_wine_view_api_key()
     req = urllib.request.Request(
-        f"{BU_API}{path}",
+        f"{WV_API}{path}",
         method=method,
         data=(json.dumps(body).encode() if body is not None else None),
         headers={"X-Browser-Use-API-Key": key, "Content-Type": "application/json"},
@@ -943,7 +943,7 @@ def _show_live_url(url):
 
 def _should_show_remote_live_view():
     """Whether Cloud provisioning should print and open its interactive live view."""
-    raw = os.environ.get("BH_OPEN_LIVE_URL")
+    raw = os.environ.get("WV_OPEN_LIVE_URL")
     if raw is None:
         return True
     value = raw.strip().lower()
@@ -951,7 +951,7 @@ def _should_show_remote_live_view():
         return False
     if value in {"1", "true", "yes", "on"}:
         return True
-    raise ValueError("BH_OPEN_LIVE_URL must be one of: 1, true, yes, on, 0, false, no, off")
+    raise ValueError("WV_OPEN_LIVE_URL must be one of: 1, true, yes, on, 0, false, no, off")
 
 
 def list_cloud_profiles():
@@ -1006,7 +1006,7 @@ def start_remote_daemon(name="remote", profileName=None, **create_kwargs):
       browserScreenWidth / browserScreenHeight, allowResizing, enableRecording.
 
     Returns the full browser dict including `liveUrl`. By default, prints that
-    URL and opens it locally when a GUI is detected. Set BH_OPEN_LIVE_URL to
+    URL and opens it locally when a GUI is detected. Set WV_OPEN_LIVE_URL to
     0, false, no, or off (case-insensitive) to suppress only those display side
     effects; the returned URL remains present."""
     show_live_view = _should_show_remote_live_view()
@@ -1020,7 +1020,7 @@ def start_remote_daemon(name="remote", profileName=None, **create_kwargs):
     try:
         ensure_daemon(
             name=name,
-            env={"BU_CDP_WS": _cdp_ws_from_url(browser["cdpUrl"]), "BU_BROWSER_ID": browser["id"]},
+            env={"WV_CDP_WS": _cdp_ws_from_url(browser["cdpUrl"]), "WV_BROWSER_ID": browser["id"]},
         )
     except BaseException as start_error:
         try:
@@ -1048,7 +1048,7 @@ def sync_local_profile(profile_name, browser=None, cloud_profile_id=None,
                         include_domains=None, exclude_domains=None):
     """Sync a local profile's cookies to a cloud profile. Returns the cloud UUID.
 
-    Shells out to `profile-use sync` (v1.0.5+). Requires BROWSER_USE_API_KEY.
+    Shells out to `profile-use sync` (v1.0.5+). Requires WINE_VIEW_API_KEY.
     profile-use copies the profile dir to a temp and syncs from the copy, so Chrome
     can stay open.
 
@@ -1066,7 +1066,7 @@ def sync_local_profile(profile_name, browser=None, cloud_profile_id=None,
     import shutil, subprocess, sys
     if not shutil.which("profile-use"):
         raise RuntimeError("profile-use not installed -- curl -fsSL https://browser-use.com/profile.sh | sh")
-    key = auth.get_browser_use_api_key()
+    key = auth.get_wine_view_api_key()
     cmd = ["profile-use", "sync", "--profile", profile_name]
     if browser:
         cmd += ["--browser", browser]
@@ -1076,7 +1076,7 @@ def sync_local_profile(profile_name, browser=None, cloud_profile_id=None,
         cmd += ["--domain", d]
     for d in exclude_domains or []:
         cmd += ["--exclude-domain", d]
-    r = subprocess.run(cmd, text=True, encoding="utf-8", errors="replace", capture_output=True, env={**os.environ, "BROWSER_USE_API_KEY": key})
+    r = subprocess.run(cmd, text=True, encoding="utf-8", errors="replace", capture_output=True, env={**os.environ, "WINE_VIEW_API_KEY": key})
     sys.stdout.write(r.stdout)
     sys.stderr.write(r.stderr)
     if r.returncode != 0:
@@ -1092,11 +1092,11 @@ def sync_local_profile(profile_name, browser=None, cloud_profile_id=None,
 
 
 def _version():
-    """Installed version of the browser-harness package. Empty string if unknown."""
+    """Installed version of the wine-view package. Empty string if unknown."""
     try:
         from importlib.metadata import PackageNotFoundError, version
         try:
-            return version("browser-harness")
+            return version("wine-view")
         except PackageNotFoundError:
             return ""
     except Exception:
@@ -1111,7 +1111,7 @@ def _repo_dir():
     Walking all the way up would claim any enclosing repository — a wheel
     installed into a venv inside the user's project, or a tool install under a
     dotfiles-managed $HOME — and run_update() would then `git pull` that repo
-    instead of upgrading browser-harness.
+    instead of upgrading wine-view.
     """
     package = Path(__file__).resolve().parent
     for candidate in (package.parent, package.parent.parent):
@@ -1147,6 +1147,7 @@ def _cache_write(data):
 
 
 def _latest_release_tag(force=False):
+    return None  # wine-view: no PyPI update check; update with `git pull` in the repo
     """Return latest PyPI version, or None. Cached for 24h to avoid hammering PyPI."""
     cache = _cache_read()
     now = time.time()
@@ -1185,7 +1186,7 @@ def check_for_update():
 def print_update_banner(out=None):
     """Print the update banner to stderr once per day. Silent when up-to-date or offline."""
     import sys
-    if os.environ.get("BH_UPDATE_CHECK", "").strip().lower() in {"0", "false", "no", "off"}:
+    if os.environ.get("WV_UPDATE_CHECK", "").strip().lower() in {"0", "false", "no", "off"}:
         return
     out = out or sys.stderr
     cache = _cache_read()
@@ -1195,8 +1196,8 @@ def print_update_banner(out=None):
     cur, latest, newer = check_for_update()
     if not newer:
         return
-    print(f"[browser-harness] update available: {cur} -> {latest}", file=out)
-    print(f"[browser-harness] agents: run `browser-harness --update -y` to upgrade and restart the daemon", file=out)
+    print(f"[wine-view] update available: {cur} -> {latest}", file=out)
+    print(f"[wine-view] agents: run `wine-view --update -y` to upgrade and restart the daemon", file=out)
     _cache_write({**cache, "banner_shown_on": today})
 
 
@@ -1287,7 +1288,7 @@ def _launch_browser():
         base for base in PROFILES if base not in enabled and (base / "Local State").exists()
     ]
     system = platform.system()
-    for key in ("BH_CHROME_PATH", "CHROME_PATH"):
+    for key in ("WV_CHROME_PATH", "CHROME_PATH"):
         raw = (os.environ.get(key) or "").strip()
         if raw and Path(raw).expanduser().is_file():
             try:
@@ -1425,7 +1426,7 @@ def run_doctor():
         mark = "ok  " if ok else "FAIL"
         print(f"  [{mark}] {label}{(' — ' + detail) if detail else ''}")
 
-    print("browser-harness doctor")
+    print("wine-view doctor")
     print(f"  platform          {platform.system()} {platform.release()}")
     print(f"  python            {sys.version.split()[0]}")
     print(f"  version           {cur_display} ({mode})")
@@ -1451,7 +1452,7 @@ def run_doctor():
             print(f"        {conn['name']} — active page: {title} — {url}")
         else:
             print(f"        {conn['name']} — active page: (no real page)")
-    row("Browser Use cloud auth", cloud_auth, auth_state.get("source") or auth_state.get("reason") or "optional: browser-harness auth login")
+    row("Browser Use cloud auth", cloud_auth, auth_state.get("source") or auth_state.get("reason") or "optional: wine-view auth login")
     # Core health = chrome + daemon. Cloud auth is optional.
     return 0 if (chrome and daemon) else 1
 
@@ -1498,8 +1499,8 @@ def _prompt_yes(question, default_yes=True, yes=False):
     return ans.startswith("y")
 
 
-def _uv_manages_browser_harness():
-    """True when `uv tool list` shows browser-harness, i.e. `uv tool upgrade` owns it.
+def _uv_manages_wine_view():
+    """True when `uv tool list` shows wine-view, i.e. `uv tool upgrade` owns it.
 
     Unknown counts as managed: if uv cannot be run or its output is unreadable we
     stay quiet rather than tell a uv user to reinstall with pip.
@@ -1512,12 +1513,12 @@ def _uv_manages_browser_harness():
         return True
     # `uv tool list` prints one "name vX.Y.Z" line per tool, then its executables as
     # "- exe" lines. Match the entry name, so a tool merely containing our name (say
-    # my-browser-harness-wrapper) cannot silence the hint for a real pip install.
+    # my-wine-view-wrapper) cannot silence the hint for a real pip install.
     for line in (listed.stdout or "").splitlines():
         entry = line.strip()
         if entry.startswith("-"):
             continue
-        if entry.split(" ", 1)[0] == "browser-harness":
+        if entry.split(" ", 1)[0] == "wine-view":
             return True
     return False
 
@@ -1531,10 +1532,10 @@ def run_update(yes=False):
     # Only short-circuit as "up to date" when we actually know the installed
     # version. Otherwise `newer=False` just means "couldn't compare" — proceed.
     if cur and latest and not newer:
-        print(f"browser-harness is up to date ({cur}).")
+        print(f"wine-view is up to date ({cur}).")
         return 0
     if cur and latest:
-        print(f"updating browser-harness: {cur} -> {latest}")
+        print(f"updating wine-view: {cur} -> {latest}")
     elif latest:
         print(f"installed version unknown; will try to update to {latest}.")
     else:
@@ -1555,17 +1556,17 @@ def run_update(yes=False):
         if r.returncode != 0:
             return r.returncode
     elif mode == "pypi":
-        tool_upgrade = subprocess.run(["uv", "tool", "upgrade", "browser-harness"])
+        tool_upgrade = subprocess.run(["uv", "tool", "upgrade", "wine-view"])
         if tool_upgrade.returncode != 0:
             # `uv tool upgrade` only manages what `uv tool install` put there, so a pip
-            # or pipx install fails here with "`browser-harness` is not installed" and
+            # or pipx install fails here with "`wine-view` is not installed" and
             # no way forward. Point only those users at the documented install: when the
             # tool IS uv-managed the failure is uv's own (offline, auth) and its message
             # already stands, so adding a pip hint there would just mislead.
-            if not _uv_manages_browser_harness():
+            if not _uv_manages_wine_view():
                 print(
                     "if you installed with pip or pipx, upgrade with: "
-                    "uv tool install --python 3.12 --upgrade --force browser-harness",
+                    "uv tool install --python 3.12 --upgrade --force wine-view",
                     file=sys.stderr,
                 )
             return tool_upgrade.returncode
@@ -1581,8 +1582,8 @@ def run_update(yes=False):
     if daemon_alive():
         if _prompt_yes("restart the running daemon so it picks up the new code?", default_yes=True, yes=yes):
             restart_daemon()
-            print("daemon stopped; it will auto-restart on next `browser-harness` call.")
+            print("daemon stopped; it will auto-restart on next `wine-view` call.")
         else:
-            print("daemon left running on old code. run `browser-harness` and it'll use the new code after the daemon recycles.")
+            print("daemon left running on old code. run `wine-view` and it'll use the new code after the daemon recycles.")
     print("update complete.")
     return 0

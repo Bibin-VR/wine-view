@@ -3,7 +3,7 @@ requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "browser-harness"
+name = "wine-view"
 version = "0.1.13"
 description = "The simplest, thinnest, and most powerful harness to control your real browser with your agent."
 readme = "README.md"
@@ -32,13 +32,13 @@ dependencies = [
 mcp = ["mcp==2.1.1"]
 
 [project.scripts]
-browser-harness = "browser_harness.run:main"
-browser-harness-mcp = "browser_harness.mcp_cli:main"
+wine-view = "wine_view.run:main"
+wine-view-mcp = "wine_view.mcp_cli:main"
 
 [project.urls]
-Homepage = "https://github.com/browser-use/browser-harness"
-Repository = "https://github.com/browser-use/browser-harness"
-Issues = "https://github.com/browser-use/browser-harness/issues"
+Homepage = "https://github.com/Bibin-VR/wine-view"
+Repository = "https://github.com/Bibin-VR/wine-view"
+Issues = "https://github.com/Bibin-VR/wine-view/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -48,7 +48,7 @@ py-modules = ["mcp_server"]
 where = ["src"]
 
 [tool.setuptools.package-data]
-browser_harness = ["SKILL.md", "video-template.html"]
+wine_view = ["SKILL.md", "video-template.html"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

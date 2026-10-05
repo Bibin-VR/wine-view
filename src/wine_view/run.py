@@ -2,7 +2,7 @@ import json, os, sys, time, urllib.request
 from io import StringIO
 
 # Windows default stdout/stderr encoding is cp1252
-# which can't encode the 🐴 marker helpers prepend to tab titles (or anything
+# which can't encode the 🍷 marker helpers prepend to tab titles (or anything
 # else outside the locale charset). Force UTF-8 so `print(page_info())` and
 # tracebacks carrying page titles don't UnicodeEncodeError on Windows. #124(4).
 for _stream in (sys.stdout, sys.stderr):
@@ -32,12 +32,12 @@ from .admin import (
 from . import auth, recorder, telemetry
 from .helpers import *
 
-HELP = """Browser Harness
+HELP = """Wine View
 
 Read SKILL.md for the default workflow and examples.
 
 Typical usage:
-  browser-harness <<'PY'
+  wine-view <<'PY'
   ensure_real_tab()
   print(page_info())
   PY
@@ -45,32 +45,32 @@ Typical usage:
 Helpers are pre-imported. The daemon auto-starts and connects to the running browser.
 
 Commands:
-  browser-harness --version        print the installed version
-  browser-harness --doctor         diagnose install, daemon, and browser state
-  browser-harness doctor           same as --doctor
-  browser-harness doctor --json [--require-existing-daemon]
+  wine-view --version        print the installed version
+  wine-view --doctor         diagnose install, daemon, and browser state
+  wine-view doctor           same as --doctor
+  wine-view doctor --json [--require-existing-daemon]
                                     print machine-readable runtime health
-  browser-harness doctor --fix-snap   print how to fix Snap Chromium blocking CDP (Linux)
-  browser-harness mac-approve         approve Chrome's macOS remote debugging sheet
-  browser-harness auth login          sign in to Browser Use Cloud for cloud browsers
-  browser-harness auth login --device-code   sign in from SSH/headless environments
-  browser-harness auth status         show Browser Use Cloud auth state
-  browser-harness auth logout         remove stored Browser Use Cloud auth
-  browser-harness skill               print the browser-harness skill text
-  browser-harness recordings          show recording status and recent sessions
-  browser-harness recordings --latest   print the newest recording directory
-  browser-harness recordings enable   save browser actions locally by default
-  browser-harness recordings disable  stop saving browser actions by default
-  browser-harness video init <recording>      prepare a recording for editing
-  browser-harness video review <recording>    compile and review the video
-  browser-harness video export <recording> --reviewed   export a verified MP4
-  browser-harness telemetry status    show anonymous telemetry opt-out state
-  browser-harness --update [-y]    pull the latest version (agents: pass -y)
-  browser-harness --reload         stop the daemon so next call picks up code changes
+  wine-view doctor --fix-snap   print how to fix Snap Chromium blocking CDP (Linux)
+  wine-view mac-approve         approve Chrome's macOS remote debugging sheet
+  wine-view auth login          sign in to Browser Use Cloud for cloud browsers
+  wine-view auth login --device-code   sign in from SSH/headless environments
+  wine-view auth status         show Browser Use Cloud auth state
+  wine-view auth logout         remove stored Browser Use Cloud auth
+  wine-view skill               print the wine-view skill text
+  wine-view recordings          show recording status and recent sessions
+  wine-view recordings --latest   print the newest recording directory
+  wine-view recordings enable   save browser actions locally by default
+  wine-view recordings disable  stop saving browser actions by default
+  wine-view video init <recording>      prepare a recording for editing
+  wine-view video review <recording>    compile and review the video
+  wine-view video export <recording> --reviewed   export a verified MP4
+  wine-view telemetry status    show anonymous telemetry opt-out state
+  wine-view --update [-y]    pull the latest version (agents: pass -y)
+  wine-view --reload         stop the daemon so next call picks up code changes
 """
 
 USAGE = """Usage:
-  browser-harness <<'PY'
+  wine-view <<'PY'
   print(page_info())
   PY
 """
@@ -91,18 +91,18 @@ def _local_chrome_listening():
     return False
 
 
-# BU_CDP_URL / BU_CDP_WS are documented to override local Chrome discovery
+# WV_CDP_URL / WV_CDP_WS are documented to override local Chrome discovery
 # (install.md:58-59), so they must also block cloud auto-bootstrap. Without this
-# guard, start_remote_daemon() in admin.py overwrites BU_CDP_WS in the daemon
+# guard, start_remote_daemon() in admin.py overwrites WV_CDP_WS in the daemon
 # env with a cloud WebSocket URL, silently replacing the user's explicit endpoint
 # *and* billing them for a cloud browser they never asked for.
 def _explicit_cdp_configured():
-    return bool(os.environ.get("BU_CDP_URL") or os.environ.get("BU_CDP_WS"))
+    return bool(os.environ.get("WV_CDP_URL") or os.environ.get("WV_CDP_WS"))
 
 
 def _cloud_auth_configured():
     try:
-        auth.get_browser_use_api_key()
+        auth.get_wine_view_api_key()
         return True
     except (auth.CloudAuthRequired, auth.AuthError, OSError):
         return False
@@ -111,7 +111,7 @@ def _cloud_auth_configured():
 def _print_skill():
     from importlib import resources
     # SKILL.md is UTF-8 (contains emoji); locale-codec read crashes on gbk Windows
-    print(resources.files("browser_harness").joinpath("SKILL.md").read_text(encoding="utf-8"), end="")
+    print(resources.files("wine_view").joinpath("SKILL.md").read_text(encoding="utf-8"), end="")
 
 
 def _telemetry_command(args):
@@ -318,7 +318,7 @@ def _run(args):
                 and "--json" in rest and len(rest) == len(set(rest)):
             sys.exit(run_doctor_json(require_existing_daemon="--require-existing-daemon" in rest))
         if rest:
-            print("usage: browser-harness doctor [--fix-snap|--json [--require-existing-daemon]]", file=sys.stderr)
+            print("usage: wine-view doctor [--fix-snap|--json [--require-existing-daemon]]", file=sys.stderr)
             sys.exit(2)
         sys.exit(run_doctor())
     if args and args[0] == "auth":
@@ -329,7 +329,7 @@ def _run(args):
         sys.exit(macos.run_cli(args[1:]))
     if args and args[0] == "skill":
         if len(args) != 1:
-            print("usage: browser-harness skill", file=sys.stderr)
+            print("usage: wine-view skill", file=sys.stderr)
             sys.exit(2)
         _print_skill()
         return
@@ -348,7 +348,7 @@ def _run(args):
             print(f"auto-recording preference {'enabled' if enabled else 'disabled'}")
             return
         if rest:
-            print("usage: browser-harness recordings [--latest|enable|disable]", file=sys.stderr)
+            print("usage: wine-view recordings [--latest|enable|disable]", file=sys.stderr)
             sys.exit(2)
         enabled, source = recorder.auto_recording_setting()
         print(f"auto-recording: {'on' if enabled else 'off'} ({source})")
@@ -364,7 +364,7 @@ def _run(args):
     if args and args[0] == "--update":
         rest = args[1:]
         if not set(rest).issubset({"-y", "--yes"}):
-            print("usage: browser-harness --update [-y|--yes]", file=sys.stderr)
+            print("usage: wine-view --update [-y|--yes]", file=sys.stderr)
             sys.exit(2)
         sys.exit(run_update(yes=bool(rest)))
     if args and args[0] == "--reload":
@@ -372,7 +372,7 @@ def _run(args):
         print("daemon stopped — will restart fresh on next call")
         return
     if args and args[0] == "--debug-clicks":
-        os.environ["BH_DEBUG_CLICKS"] = "1"
+        os.environ["WV_DEBUG_CLICKS"] = "1"
         args = args[1:]
     if not args and not sys.stdin.isatty():
         code = sys.stdin.read()
@@ -381,13 +381,13 @@ def _run(args):
     else:
         sys.exit(USAGE)
     print_update_banner()
-    # Auto-bootstrap a cloud browser is opt-in via BU_AUTOSPAWN — BROWSER_USE_API_KEY alone
+    # Auto-bootstrap a cloud browser is opt-in via WV_AUTOSPAWN — WINE_VIEW_API_KEY alone
     # is not enough, since the key is commonly set for unrelated reasons (profile sync,
-    # cloud API calls, parent agents managing their own session). An explicit BU_CDP_URL
-    # or BU_CDP_WS also blocks the spawn so we honour the precedence install.md promises.
+    # cloud API calls, parent agents managing their own session). An explicit WV_CDP_URL
+    # or WV_CDP_WS also blocks the spawn so we honour the precedence install.md promises.
     cloud_admin = code.lstrip().startswith(("start_remote_daemon(", "stop_remote_daemon("))
     if not cloud_admin:
-        require_existing = os.environ.get("BH_REQUIRE_EXISTING_DAEMON") == "1"
+        require_existing = os.environ.get("WV_REQUIRE_EXISTING_DAEMON") == "1"
         try:
             if require_existing:
                 require_existing_daemon()
@@ -397,13 +397,13 @@ def _run(args):
                     and not _local_chrome_listening()
                     and not _explicit_cdp_configured()
                     and _cloud_auth_configured()
-                    and os.environ.get("BU_AUTOSPAWN")
+                    and os.environ.get("WV_AUTOSPAWN")
                 ):
                     start_remote_daemon(NAME)
                 ensure_daemon()
         except RuntimeError as e:
             # Setup/permission errors are instructions for calling agent
-            print(f"browser-harness: {e}", file=sys.stderr)
+            print(f"wine-view: {e}", file=sys.stderr)
             sys.exit(1)
     _install_helper_trace()
     exec(code, globals())

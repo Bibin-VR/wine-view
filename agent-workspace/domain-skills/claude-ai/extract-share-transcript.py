@@ -1,9 +1,9 @@
 """Extract a transcript from a claude.ai share URL.
 
-Usage (run inside browser-harness):
+Usage (run inside wine-view):
     CLAUDE_SHARE_URL=https://claude.ai/share/<uuid> \
     OUTPUT_DIR=/path/to/transcripts \
-    browser-harness < agent-workspace/domain-skills/claude-ai/extract-share-transcript.py
+    wine-view < agent-workspace/domain-skills/claude-ai/extract-share-transcript.py
 
 Requires: the user's running Chrome must be signed into claude.ai (share pages
 render the conversation only for authenticated viewers — see share-export.md).
@@ -19,7 +19,7 @@ out_dir = os.environ.get("OUTPUT_DIR")
 if not share_url or not out_dir:
     sys.exit("set CLAUDE_SHARE_URL and OUTPUT_DIR env vars")
 
-new_tab(share_url)            # noqa: F821 — provided by browser-harness
+new_tab(share_url)            # noqa: F821 — provided by wine-view
 wait_for_load()               # noqa: F821
 time.sleep(2)                 # let the conversation tree render
 

@@ -19,14 +19,14 @@ Do not use CDP `Page.printToPDF` for QBO reports. It prints the surrounding QBO 
 ## Browser Attachment
 
 - Use the real logged-in browser profile that has the QBO session.
-- If that session is in a non-default Chromium browser, start it with a known remote-debugging port and pass `BU_CDP_URL` or `BU_CDP_WS` to Browser Harness.
+- If that session is in a non-default Chromium browser, start it with a known remote-debugging port and pass `WV_CDP_URL` or `WV_CDP_WS` to Wine View.
 - Computer Use is only a fallback for native OS sheets, visual confirmation, or unexpected QBO UI blockers. It is not part of the normal fast path.
 - After a browser restart, QBO may restore a stale report tab. Always read the visible report period before exporting.
 
 Example attachment pattern for a dedicated browser endpoint:
 
 ```bash
-BU_NAME=qbo BU_CDP_URL=http://127.0.0.1:9223 browser-harness <<'PY'
+WV_NAME=qbo WV_CDP_URL=http://127.0.0.1:9223 wine-view <<'PY'
 print(page_info())
 PY
 ```

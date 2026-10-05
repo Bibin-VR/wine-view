@@ -1,17 +1,17 @@
 {
-  "name": "browser-harness",
-  "description": "Install browser-harness directly from this repo.",
+  "name": "wine-view",
+  "description": "Install wine-view directly from this repo.",
   "owner": {
-    "name": "Browser Use",
-    "url": "https://browser-use.com"
+    "name": "Bibin-VR",
+    "url": "https://github.com/Bibin-VR"
   },
   "plugins": [
     {
-      "name": "browser-harness",
-      "description": "Direct CDP browser control for agents: coordinate clicks, screenshots, persistent Python session, local Chrome or Browser Use cloud. Ships skills only; the `browser-harness` CLI is a one-time install prerequisite.",
+      "name": "wine-view",
+      "description": "Direct CDP browser control for agents: coordinate clicks, screenshots, persistent Python session, local Chrome or Browser Use cloud. Ships skills only; the `wine-view` CLI is a one-time install prerequisite.",
       "category": "automation",
       "source": ".",
-      "homepage": "https://github.com/browser-use/browser-harness",
+      "homepage": "https://github.com/Bibin-VR/wine-view",
       "keywords": [
         "browser",
         "automation",

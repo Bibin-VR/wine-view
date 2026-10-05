@@ -1,7 +1,7 @@
 from pathlib import Path
 from types import SimpleNamespace
 
-from browser_harness import macos
+from wine_view import macos
 
 
 def _enable_chrome_toggle(monkeypatch):

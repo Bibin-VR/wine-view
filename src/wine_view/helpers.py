@@ -1,7 +1,7 @@
 """Browser control via CDP.
 
 Core helpers live here. Agent-editable helpers live in
-BH_AGENT_WORKSPACE/agent_helpers.py.
+WV_AGENT_WORKSPACE/agent_helpers.py.
 """
 import base64, importlib.util, json, math, os, time, urllib.request
 from pathlib import Path
@@ -35,7 +35,7 @@ def _load_env_file(p):
 
 _load_env()
 
-NAME = os.environ.get("BU_NAME", "default")
+NAME = os.environ.get("WV_NAME", "default")
 SOCK = ipc.sock_addr(NAME)
 INTERNAL = ("chrome://", "chrome-untrusted://", "devtools://", "chrome-extension://", "about:")
 IPC_CONNECT_TIMEOUT_SECONDS = 5.0
@@ -151,7 +151,7 @@ def _is_illegal_return_error(exc):
 # --- navigation / page ---
 def goto_url(url):
     r = cdp("Page.navigate", url=url)
-    if os.environ.get("BH_DOMAIN_SKILLS") != "1":
+    if os.environ.get("WV_DOMAIN_SKILLS") != "1":
         return r
     d = (AGENT_WORKSPACE / "domain-skills" / (urlparse(url).hostname or "").removeprefix("www.").split(".")[0])
     return {**r, "domain_skills": sorted(p.name for p in d.rglob("*.md"))[:10]} if d.is_dir() else r
@@ -172,7 +172,7 @@ def page_info():
 _debug_click_counter = 0
 
 def click_at_xy(x, y, button="left", clicks=1):
-    if os.environ.get("BH_DEBUG_CLICKS"):
+    if os.environ.get("WV_DEBUG_CLICKS"):
         global _debug_click_counter
         try:
             from PIL import Image, ImageDraw
@@ -386,10 +386,10 @@ def current_tab():
     }
 
 def _mark_tab():
-    """Prepend horse emoji to tab title so the user can see which tab the agent controls."""
-    if os.environ.get("BH_TAB_MARKER", "").strip().lower() in {"0", "false", "no", "off"}:
+    """Prepend wine emoji to tab title so the user can see which tab the agent controls."""
+    if os.environ.get("WV_TAB_MARKER", "").strip().lower() in {"0", "false", "no", "off"}:
         return
-    try: cdp("Runtime.evaluate", expression="if(!document.title.startsWith('\U0001F434'))document.title='\U0001F434 '+document.title")
+    try: cdp("Runtime.evaluate", expression="if(!document.title.startsWith('\U0001F377'))document.title='\U0001F377 '+document.title")
     except Exception: pass
 
 def _target_id(target):
@@ -409,15 +409,15 @@ def activate_tab(target):
 def switch_tab(target, activate=False):
     """Attach the agent without changing Chrome's visible tab by default.
 
-    Pass activate=True only when Chrome must visibly show the target. The horse
+    Pass activate=True only when Chrome must visibly show the target. The wine
     marker still moves to the attached target so the user can find it.
     """
     # Accept either a raw targetId string or the dict returned by current_tab() / list_tabs(),
     # so `switch_tab(current_tab())` works without a manual ["targetId"] dance.
     target_id = _target_id(target)
-    # Unmark old tab. Horse emoji is a surrogate pair in JS UTF-16 strings (2 code units),
+    # Unmark old tab. Wine emoji is a surrogate pair in JS UTF-16 strings (2 code units),
     # plus the trailing space = 3 code units, so slice(3) cleanly removes the prefix.
-    try: cdp("Runtime.evaluate", expression="if(document.title.startsWith('\U0001F434 '))document.title=document.title.slice(3)")
+    try: cdp("Runtime.evaluate", expression="if(document.title.startsWith('\U0001F377 '))document.title=document.title.slice(3)")
     except Exception: pass
     if activate:
         activate_tab(target_id)
@@ -628,9 +628,9 @@ def upload_file(selector, path):
 def http_get(url, headers=None, timeout=20.0):
     """Pure HTTP — no browser. Use for static pages / APIs. Wrap in ThreadPoolExecutor for bulk.
 
-    When BROWSER_USE_API_KEY is set, routes through the fetch-use proxy (handles bot
+    When WINE_VIEW_API_KEY is set, routes through the fetch-use proxy (handles bot
     detection, residential proxies, retries). Falls back to local urllib otherwise."""
-    if os.environ.get("BROWSER_USE_API_KEY"):
+    if os.environ.get("WINE_VIEW_API_KEY"):
         try:
             from fetch_use import fetch_sync
             return fetch_sync(url, headers=headers, timeout_ms=int(timeout * 1000)).text
@@ -654,7 +654,7 @@ def _load_agent_helpers():
     p = AGENT_WORKSPACE / "agent_helpers.py"
     if not p.exists():
         return
-    spec = importlib.util.spec_from_file_location("browser_harness_agent_helpers", p)
+    spec = importlib.util.spec_from_file_location("wine_view_agent_helpers", p)
     if not spec or not spec.loader:
         return
     module = importlib.util.module_from_spec(spec)

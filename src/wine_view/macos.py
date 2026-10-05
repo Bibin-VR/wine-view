@@ -52,7 +52,7 @@ return resultText
 
 
 _ACCESSIBILITY_DETAIL = (
-    "allow the app launching browser-harness (for example Terminal, iTerm, or Codex) "
+    "allow the app launching wine-view (for example Terminal, iTerm, or Codex) "
     "in System Settings > Privacy & Security > Accessibility"
 )
 
@@ -78,7 +78,7 @@ def approve_remote_debugging() -> tuple[str, str | None]:
         return (
             "setup-required",
             'first enable "Allow remote debugging for this browser instance" at '
-            "chrome://inspect/#remote-debugging, then run `browser-harness mac-approve` again",
+            "chrome://inspect/#remote-debugging, then run `wine-view mac-approve` again",
         )
 
     try:
@@ -113,14 +113,14 @@ def approve_remote_debugging() -> tuple[str, str | None]:
             return "ready", None
         return (
             "not-found",
-            "retry the browser command and run `browser-harness mac-approve` when the prompt appears",
+            "retry the browser command and run `wine-view mac-approve` when the prompt appears",
         )
     return "error", f"unexpected osascript result: {status or '<empty>'}"
 
 
 def run_cli(args: list[str]) -> int:
     if args:
-        print("usage: browser-harness mac-approve", flush=True)
+        print("usage: wine-view mac-approve", flush=True)
         return 2
 
     status, detail = approve_remote_debugging()

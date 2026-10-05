@@ -1,7 +1,7 @@
-"""Browser Use Cloud auth for browser-harness.
+"""Browser Use Cloud auth for wine-view.
 
 The model-facing contract stays small: cloud browser startup either has a key
-or tells the agent to run `browser-harness auth login`. OAuth details live here.
+or tells the agent to run `wine-view auth login`. OAuth details live here.
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ from . import paths
 
 AUTH_BASE = "https://api.browser-use.com"
 # Browser Use currently exposes this registered CLI OAuth client. Keep an env
-# escape hatch so a dedicated browser-harness client can be used once issued.
+# escape hatch so a dedicated wine-view client can be used once issued.
 DEFAULT_CLIENT_ID = "browser-use-terminal"
 CALLBACK_PATH = "/browser-use-cloud/callback"
 AUTH_TIMEOUT_SECONDS = 600
@@ -36,7 +36,7 @@ AUTH_TIMEOUT_SECONDS = 600
 
 class CloudAuthRequired(RuntimeError):
     def __init__(self):
-        super().__init__("cloud-auth-required: run `browser-harness auth login`")
+        super().__init__("cloud-auth-required: run `wine-view auth login`")
 
 
 class AuthError(RuntimeError):
@@ -116,15 +116,15 @@ class AuthRecord:
 
 
 def auth_base() -> str:
-    return (os.environ.get("BROWSER_USE_CLOUD_API_URL") or AUTH_BASE).rstrip("/")
+    return (os.environ.get("WINE_VIEW_CLOUD_API_URL") or AUTH_BASE).rstrip("/")
 
 
 def client_id() -> str:
-    return os.environ.get("BROWSER_HARNESS_OAUTH_CLIENT_ID") or DEFAULT_CLIENT_ID
+    return os.environ.get("WINE_VIEW_OAUTH_CLIENT_ID") or DEFAULT_CLIENT_ID
 
 
 def auth_path() -> Path:
-    override = os.environ.get("BH_AUTH_PATH")
+    override = os.environ.get("WV_AUTH_PATH")
     if override:
         return Path(override).expanduser()
     return paths.config_dir() / "auth.json"
@@ -179,8 +179,8 @@ def stored_auth_record(path: Path | None = None) -> dict | None:
     return value if isinstance(value, dict) else None
 
 
-def get_browser_use_api_key() -> str:
-    env_key = os.environ.get("BROWSER_USE_API_KEY")
+def get_wine_view_api_key() -> str:
+    env_key = os.environ.get("WINE_VIEW_API_KEY")
     if env_key:
         return env_key
     stored = stored_auth_record()
@@ -191,7 +191,7 @@ def get_browser_use_api_key() -> str:
 
 
 def auth_status() -> dict:
-    if os.environ.get("BROWSER_USE_API_KEY"):
+    if os.environ.get("WINE_VIEW_API_KEY"):
         return {"status": "authenticated", "source": "env", "path": str(auth_path())}
     stored = stored_auth_record()
     if not stored or not stored.get("api_key"):
@@ -220,7 +220,7 @@ def start_browser_auth(*, open_url=True, timeout=AUTH_TIMEOUT_SECONDS) -> Browse
         "code_challenge": challenge,
         "code_challenge_method": "S256",
         "state": state,
-        "device_name": os.environ.get("BH_DEVICE_NAME") or "browser-harness",
+        "device_name": os.environ.get("WV_DEVICE_NAME") or "wine-view",
     }
     try:
         data = _post_json(f"{auth_base()}/cloud/cli-auth/browser", req)
@@ -298,7 +298,7 @@ def browser_login(*, open_url=True, json_output=False, timeout=AUTH_TIMEOUT_SECO
 def start_device_auth(*, open_url=True) -> DeviceAuthStart:
     data = _post_json(
         f"{auth_base()}/cloud/cli-auth/device",
-        {"client_id": client_id(), "device_name": os.environ.get("BH_DEVICE_NAME") or "browser-harness"},
+        {"client_id": client_id(), "device_name": os.environ.get("WV_DEVICE_NAME") or "wine-view"},
     )
     device_code = data.get("device_code")
     user_code = data.get("user_code")
@@ -509,7 +509,7 @@ def _stored_success_output() -> dict:
 
 
 def run_auth_cli(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="browser-harness auth")
+    parser = argparse.ArgumentParser(prog="wine-view auth")
     sub = parser.add_subparsers(dest="command", required=True)
     login = sub.add_parser("login")
     login_mode = login.add_mutually_exclusive_group()

@@ -10,7 +10,7 @@ curl -fsSL https://browser-use.com/profile.sh | sh
 
 Downloads `profile-use` (macOS / Linux, x64 / arm64). The Python helpers shell out to it; you don't run `profile-use` directly.
 
-## Python API (pre-imported in `browser-harness`)
+## Python API (pre-imported in `wine-view`)
 
 ```python
 list_cloud_profiles()
@@ -73,15 +73,15 @@ sync_local_profile("browser-use.com",
 
 **Cookies only.** No localStorage, no IndexedDB, no extensions. Enough for session-cookie sites (Google, GitHub, Stripe, most SaaS); not for sites that store auth in localStorage.
 
-Cookies mutated during a remote session only persist on a clean `PATCH /browsers/{id} {"action":"stop"}` — the daemon does this on shutdown when `BU_BROWSER_ID` + `BROWSER_USE_API_KEY` are set (default for remote daemons). Sessions that hit the timeout lose in-session state.
+Cookies mutated during a remote session only persist on a clean `PATCH /browsers/{id} {"action":"stop"}` — the daemon does this on shutdown when `WV_BROWSER_ID` + `WINE_VIEW_API_KEY` are set (default for remote daemons). Sessions that hit the timeout lose in-session state.
 
 ## Cloud profile CRUD
 
 - UI: https://cloud.browser-use.com/settings?tab=profiles
-- API: `GET /profiles`, `GET/PATCH/DELETE /profiles/{id}` (paths are relative to `BU_API = "https://api.browser-use.com/api/v3"` in `admin.py`). Fields: `id`, `name`, `userId`, `lastUsedAt`, `cookieDomains[]`. `list_cloud_profiles()` wraps this.
+- API: `GET /profiles`, `GET/PATCH/DELETE /profiles/{id}` (paths are relative to `WV_API = "https://api.browser-use.com/api/v3"` in `admin.py`). Fields: `id`, `name`, `userId`, `lastUsedAt`, `cookieDomains[]`. `list_cloud_profiles()` wraps this.
 - Name → UUID: `profileName=` on `start_remote_daemon` resolves client-side; no API change needed.
 - Need the UUID for an existing profile? `matches = [p["id"] for p in list_cloud_profiles() if p["name"] == "<name>"]` — then verify `len(matches) == 1` before using it. Profile names are not unique; syncs create duplicates unless you pass `cloud_profile_id=`.
-- Lower-level raw calls: `from browser_harness.admin import _browser_use; _browser_use("/profiles/<id>", "DELETE")`. Pass the path *without* the `/api/v3` prefix — it's already on `BU_API`.
+- Lower-level raw calls: `from wine_view.admin import _browser_use; _browser_use("/profiles/<id>", "DELETE")`. Pass the path *without* the `/api/v3` prefix — it's already on `WV_API`.
 
 ## Traps
 

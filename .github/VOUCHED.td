@@ -1,4 +1,4 @@
-# Vouched (or denounced) users for browser-harness.
+# Vouched (or denounced) users for wine-view.
 #
 # See https://github.com/mitchellh/vouch for details.
 #

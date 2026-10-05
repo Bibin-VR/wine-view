@@ -5,7 +5,7 @@ from urllib.error import HTTPError
 
 import pytest
 
-from browser_harness import admin, daemon
+from wine_view import admin, daemon
 
 
 @pytest.fixture
@@ -31,8 +31,8 @@ def test_origin_directory_alone_is_not_a_running_browser(origin_profile):
 @pytest.mark.parametrize("status", [404, 403])
 def test_origin_port_discovery_keeps_permission_gate(monkeypatch, origin_profile, status):
     (origin_profile / "DevToolsActivePort").write_text("9222\n/devtools/browser/origin\n")
-    monkeypatch.delenv("BU_CDP_WS", raising=False)
-    monkeypatch.delenv("BU_CDP_URL", raising=False)
+    monkeypatch.delenv("WV_CDP_WS", raising=False)
+    monkeypatch.delenv("WV_CDP_URL", raising=False)
     monkeypatch.setattr(daemon, "REMOTE_ID", None)
 
     def urlopen(url, **kwargs):
@@ -48,7 +48,7 @@ def test_origin_port_discovery_keeps_permission_gate(monkeypatch, origin_profile
 
 
 def test_origin_relaunch_uses_origin_not_regular_brave(monkeypatch, origin_profile):
-    monkeypatch.delenv("BH_CHROME_PATH", raising=False)
+    monkeypatch.delenv("WV_CHROME_PATH", raising=False)
     monkeypatch.delenv("CHROME_PATH", raising=False)
     calls = []
     monkeypatch.setattr("subprocess.run", lambda cmd, **kw: calls.append(cmd) or SimpleNamespace(returncode=0))

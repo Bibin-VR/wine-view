@@ -6,21 +6,21 @@ from . import paths
 
 IS_WINDOWS = sys.platform == "win32"
 # Two caller-supplied dirs:
-#   BH_RUNTIME_DIR — sock/port/pid. AF_UNIX sun_path is 104 bytes on macOS, so
+#   WV_RUNTIME_DIR — sock/port/pid. AF_UNIX sun_path is 104 bytes on macOS, so
 #       the runtime dir must be short. Caller is responsible for keeping it
-#       within budget. Falls back to BH_TMP_DIR (legacy single-dir callers),
-#       then to the browser-harness runtime dir.
-#   BH_TMP_DIR — screenshots, debug overlays, daemon log. No path-length
+#       within budget. Falls back to WV_TMP_DIR (legacy single-dir callers),
+#       then to the wine-view runtime dir.
+#   WV_TMP_DIR — screenshots, debug overlays, daemon log. No path-length
 #       sensitivity; caller can use a deep persistent path.
 # By default, a caller-supplied dir is treated as per-instance and files use
-# bare "bu" stems. Set BH_RUNTIME_DIR_SHARED=1 or BH_TMP_DIR_SHARED=1 when the
-# dir is shared by multiple BU_NAME values and the filename must carry the name.
-BH_TMP_DIR = os.environ.get("BH_TMP_DIR")
-BH_RUNTIME_DIR = os.environ.get("BH_RUNTIME_DIR") or BH_TMP_DIR
-BH_RUNTIME_DIR_SHARED = os.environ.get("BH_RUNTIME_DIR_SHARED") == "1"
-BH_TMP_DIR_SHARED = os.environ.get("BH_TMP_DIR_SHARED") == "1"
+# bare "wv" stems. Set WV_RUNTIME_DIR_SHARED=1 or WV_TMP_DIR_SHARED=1 when the
+# dir is shared by multiple WV_NAME values and the filename must carry the name.
+WV_TMP_DIR = os.environ.get("WV_TMP_DIR")
+WV_RUNTIME_DIR = os.environ.get("WV_RUNTIME_DIR") or WV_TMP_DIR
+WV_RUNTIME_DIR_SHARED = os.environ.get("WV_RUNTIME_DIR_SHARED") == "1"
+WV_TMP_DIR_SHARED = os.environ.get("WV_TMP_DIR_SHARED") == "1"
 _TMP = paths.tmp_dir()
-_RUNTIME = paths.ensure_private_dir(Path(BH_RUNTIME_DIR).expanduser().resolve()) if BH_RUNTIME_DIR else paths.runtime_dir()
+_RUNTIME = paths.ensure_private_dir(Path(WV_RUNTIME_DIR).expanduser().resolve()) if WV_RUNTIME_DIR else paths.runtime_dir()
 _TMP.mkdir(parents=True, exist_ok=True)
 _RUNTIME.mkdir(parents=True, exist_ok=True)
 _NAME_RE = re.compile(r"\A[A-Za-z0-9_-]{1,64}\Z")
@@ -32,20 +32,20 @@ _NAME_RE = re.compile(r"\A[A-Za-z0-9_-]{1,64}\Z")
 _server_token = None
 
 
-def _check(name):  # path-traversal guard for BU_NAME
+def _check(name):  # path-traversal guard for WV_NAME
     if not _NAME_RE.match(name or ""):
-        raise ValueError(f"invalid BU_NAME {name!r}: must match [A-Za-z0-9_-]{{1,64}}")
+        raise ValueError(f"invalid WV_NAME {name!r}: must match [A-Za-z0-9_-]{{1,64}}")
     return name
 
 
-def _runtime_stem(name):  # "bu" when BH_RUNTIME_DIR isolates us, else "bu-<NAME>"
+def _runtime_stem(name):  # "wv" when WV_RUNTIME_DIR isolates us, else "wv-<NAME>"
     _check(name)
-    return "bu" if BH_RUNTIME_DIR and not BH_RUNTIME_DIR_SHARED else f"bu-{name}"
+    return "wv" if WV_RUNTIME_DIR and not WV_RUNTIME_DIR_SHARED else f"wv-{name}"
 
 
-def _tmp_stem(name):  # "bu" when BH_TMP_DIR isolates us, else "bu-<NAME>"
+def _tmp_stem(name):  # "wv" when WV_TMP_DIR isolates us, else "wv-<NAME>"
     _check(name)
-    return "bu" if BH_TMP_DIR and not BH_TMP_DIR_SHARED else f"bu-{name}"
+    return "wv" if WV_TMP_DIR and not WV_TMP_DIR_SHARED else f"wv-{name}"
 
 
 def log_path(name):   return _TMP / f"{_tmp_stem(name)}.log"

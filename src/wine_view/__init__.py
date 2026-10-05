@@ -1,0 +1,2 @@
+"""Wine View core package."""
+

@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from browser_harness import daemon
+from wine_view import daemon
 
 
 def test_publish_own_pid_never_truncates_parent_record(tmp_path, monkeypatch):
@@ -44,7 +44,7 @@ def test_remote_stop_retries_and_succeeds(monkeypatch):
     attempts = []
     monkeypatch.setattr(daemon, "REMOTE_ID", "browser-1")
     monkeypatch.setattr(daemon, "_REMOTE_STOPPED", False)
-    monkeypatch.setattr(daemon.auth, "get_browser_use_api_key", lambda: "key")
+    monkeypatch.setattr(daemon.auth, "get_wine_view_api_key", lambda: "key")
     monkeypatch.setattr(daemon.time, "sleep", lambda _seconds: None)
 
     def urlopen(_request, timeout):
@@ -95,7 +95,7 @@ def _fresh_daemon():
 
 @pytest.mark.parametrize("value", ["0", "false", "NO", "off"])
 def test_tab_marker_can_be_disabled_before_set_session_schedules_it(monkeypatch, value):
-    monkeypatch.setenv("BH_TAB_MARKER", value)
+    monkeypatch.setenv("WV_TAB_MARKER", value)
     d = _fresh_daemon()
 
     async def run():
@@ -112,7 +112,7 @@ def test_tab_marker_can_be_disabled_before_set_session_schedules_it(monkeypatch,
 
 
 def test_tab_marker_stays_enabled_by_default(monkeypatch):
-    monkeypatch.delenv("BH_TAB_MARKER", raising=False)
+    monkeypatch.delenv("WV_TAB_MARKER", raising=False)
     d = _fresh_daemon()
 
     async def run():
@@ -136,7 +136,7 @@ def test_tab_marker_stays_enabled_by_default(monkeypatch):
 
 @pytest.mark.parametrize("value", ["0", "false", "NO", "off"])
 def test_tab_marker_disabled_on_page_load_events(monkeypatch, value):
-    monkeypatch.setenv("BH_TAB_MARKER", value)
+    monkeypatch.setenv("WV_TAB_MARKER", value)
     d = _fresh_daemon()
     d.session = "loaded-session"
 

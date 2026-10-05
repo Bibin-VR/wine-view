@@ -1,4 +1,4 @@
-"""Console entry point for the optional Browser Harness MCP server."""
+"""Console entry point for the optional Wine View MCP server."""
 
 
 def main() -> None:
@@ -8,8 +8,8 @@ def main() -> None:
     except ModuleNotFoundError as exc:
         if exc.name == "mcp" or (exc.name and exc.name.startswith("mcp.")):
             raise SystemExit(
-                "browser-harness-mcp requires MCP support. "
-                "Install it with: pip install 'browser-harness[mcp]'"
+                "wine-view-mcp requires MCP support. "
+                "Install it with: pip install 'wine-view[mcp]'"
             ) from None
         raise
 

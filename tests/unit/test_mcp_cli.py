@@ -4,7 +4,7 @@ import builtins
 
 import pytest
 
-from browser_harness import mcp_cli
+from wine_view import mcp_cli
 
 
 def test_main_explains_missing_mcp_extra(monkeypatch):
@@ -17,5 +17,5 @@ def test_main_explains_missing_mcp_extra(monkeypatch):
 
     monkeypatch.setattr(builtins, "__import__", import_without_mcp)
 
-    with pytest.raises(SystemExit, match=r"pip install 'browser-harness\[mcp\]'"):
+    with pytest.raises(SystemExit, match=r"pip install 'wine-view\[mcp\]'"):
         mcp_cli.main()

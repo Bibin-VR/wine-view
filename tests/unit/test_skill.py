@@ -9,7 +9,7 @@ def _frontmatter(text: str) -> str:
 
 
 def test_packaged_skill_frontmatter_is_valid_simple_yaml():
-    text = resources.files("browser_harness").joinpath("SKILL.md").read_text()
+    text = resources.files("wine_view").joinpath("SKILL.md").read_text()
     metadata = {}
 
     for line in _frontmatter(text).splitlines():
@@ -30,6 +30,6 @@ def test_packaged_skill_frontmatter_is_valid_simple_yaml():
         metadata[key] = parsed
 
     assert metadata == {
-        "name": "browser-harness",
+        "name": "wine-view",
         "description": "Control a real browser via CDP: clicking, typing, navigation, logged-in sessions, JS-rendered or bot-protected pages. Not for plain HTTP fetches of public content - use curl for those.",
     }

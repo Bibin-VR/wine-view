@@ -1,7 +1,7 @@
 # Facebook Groups — mining feeds for posts + external URLs
 
 Field-tested against a logged-in Jay account on 2026-04-18.
-**Requires:** Browser Harness driving a real Chrome that is (a) signed into
+**Requires:** Wine View driving a real Chrome that is (a) signed into
 Facebook and (b) already a member of the target group. Non-member or logged-out
 views serve a stripped landing page with no post content.
 
@@ -167,7 +167,7 @@ print(js("""
 ## Full example — mine one group, emit JSON for downstream tools
 
 ```bash
-cd ~/Developer/browser-harness && uv run browser-harness <<'PY'
+cd ~/Developer/wine-view && uv run wine-view <<'PY'
 import json, sys
 from urllib.parse import urlparse, parse_qs, unquote
 

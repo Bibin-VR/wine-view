@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from browser_harness import auth
+from wine_view import auth
 
 
 @pytest.mark.parametrize("raw", ["[]", "null", '"token"', "123"])

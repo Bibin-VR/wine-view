@@ -1,10 +1,11 @@
-<img src="https://raw.githubusercontent.com/browser-use/media/main/browser-harness/banner-ink.svg" alt="Browser Harness" width="100%" />
 
-# Browser Harness ♞
+# Wine View 🍷
+
+> Fork of [browser-use/browser-harness](https://github.com/browser-use/browser-harness) (MIT, © Browser Use), renamed to wine-view. Telemetry and the PyPI update check are removed: it sends nothing anywhere except the sites you drive and, only if you opt in with an API key, Browser Use Cloud.
 
 Connect an LLM directly to your real browser through one editable CDP websocket. The agent writes missing helpers as it works, so the harness improves with every task.
 
-Try browser-harness in [Browser Use Cloud](https://cloud.browser-use.com/v4?utm_campaign=browser-harness-use-in-cloud&utm_source=github) or paste the setup prompt into your coding agent.
+Paste the setup prompt into your coding agent.
 
 ```
   ● agent: wants to upload a file
@@ -29,7 +30,7 @@ Try browser-harness in [Browser Use Cloud](https://cloud.browser-use.com/v4?utm_
 Paste into Claude Code or Codex:
 
 ```text
-Install or upgrade browser-harness to the latest stable version with uv using Python 3.12, register the skill from `browser-harness skill`, and connect it to my browser. Ask whether I want local browser recordings enabled; default to no and preserve my existing preference on upgrades. Follow https://github.com/browser-use/browser-harness/blob/main/install.md if setup or connection fails.
+Install or upgrade wine-view to the latest stable version with uv using Python 3.12, register the skill from `wine-view skill`, and connect it to my browser. Ask whether I want local browser recordings enabled; default to no and preserve my existing preference on upgrades. Follow https://github.com/Bibin-VR/wine-view/blob/main/install.md if setup or connection fails.
 ```
 
 The agent will open `chrome://inspect/#remote-debugging`. On first setup, tick
@@ -41,7 +42,7 @@ the checkbox so the agent can connect to your browser:
 
 - [`install.md`](install.md) connects the agent to your browser.
 - [`SKILL.md`](SKILL.md) teaches it the browser workflow.
-- [`src/browser_harness/`](src/browser_harness/) stays protected while the agent writes reusable helpers in its local workspace.
+- [`src/wine_view/`](src/wine_view/) stays protected while the agent writes reusable helpers in its local workspace.
 
 ## Scale with Browser Use Cloud
 
@@ -49,7 +50,7 @@ Use your local browser for logged-in, personal work. When you want many browsers
 
 ## MCP server
 
-`browser-harness-mcp` exposes the browser control helpers as MCP tools over
+`wine-view-mcp` exposes the browser control helpers as MCP tools over
 stdio, so any MCP client (Claude Code, Devin, Cursor, etc.) can drive the
 browser without writing a second CDP layer. See [docs/MCP.md](docs/MCP.md) for
 setup and client configuration.

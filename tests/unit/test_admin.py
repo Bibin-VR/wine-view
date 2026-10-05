@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from browser_harness import admin
+from wine_view import admin
 
 
 class FakeSocket:
@@ -44,7 +44,7 @@ def test_cleanup_unattached_browser_launch_stops_posix_process_group(monkeypatch
     process = FakeProcess()
     killed = []
     monkeypatch.setattr(admin.ipc, "IS_WINDOWS", False)
-    monkeypatch.setattr("browser_harness.daemon._devtools_port_live", lambda _profile: False)
+    monkeypatch.setattr("wine_view.daemon._devtools_port_live", lambda _profile: False)
     monkeypatch.setattr(admin.os, "killpg", lambda pid, sig: killed.append((pid, sig)))
 
     admin._cleanup_unattached_browser_launch((process, Path("/profile")))
@@ -54,7 +54,7 @@ def test_cleanup_unattached_browser_launch_stops_posix_process_group(monkeypatch
 
 def test_cleanup_unattached_browser_launch_keeps_cdp_browser(monkeypatch):
     process = FakeProcess()
-    monkeypatch.setattr("browser_harness.daemon._devtools_port_live", lambda _profile: True)
+    monkeypatch.setattr("wine_view.daemon._devtools_port_live", lambda _profile: True)
     monkeypatch.setattr(admin.os, "killpg", lambda _pid, _sig: pytest.fail("must keep the attached browser"))
 
     admin._cleanup_unattached_browser_launch((process, Path("/profile")))
@@ -62,14 +62,14 @@ def test_cleanup_unattached_browser_launch_keeps_cdp_browser(monkeypatch):
 
 def test_cleanup_unattached_browser_launch_ignores_unowned_launch(monkeypatch):
     monkeypatch.setattr(
-        "browser_harness.daemon._devtools_port_live",
+        "wine_view.daemon._devtools_port_live",
         lambda _profile: pytest.fail("must not probe an unowned launch"),
     )
 
     admin._cleanup_unattached_browser_launch((None, Path("/profile")))
 
 
-@pytest.mark.parametrize("env_key", ["BH_CHROME_PATH", "CHROME_PATH"])
+@pytest.mark.parametrize("env_key", ["WV_CHROME_PATH", "CHROME_PATH"])
 def test_explicit_chrome_path_retains_matching_profile_on_linux(monkeypatch, tmp_path, env_key):
     binary = tmp_path / "google-chrome-stable"
     binary.touch()
@@ -78,12 +78,12 @@ def test_explicit_chrome_path_retains_matching_profile_on_linux(monkeypatch, tmp
     (profile / "Local State").write_text('{}')
     process = FakeProcess()
 
-    other_key = "CHROME_PATH" if env_key == "BH_CHROME_PATH" else "BH_CHROME_PATH"
+    other_key = "CHROME_PATH" if env_key == "WV_CHROME_PATH" else "WV_CHROME_PATH"
     monkeypatch.setenv(env_key, str(binary))
     monkeypatch.delenv(other_key, raising=False)
-    monkeypatch.setattr("browser_harness.daemon.PROFILES", [profile])
-    monkeypatch.setattr("browser_harness.daemon.remote_debugging_toggle_profiles", lambda: [profile])
-    monkeypatch.setattr("browser_harness.daemon._devtools_port_live", lambda _profile: False)
+    monkeypatch.setattr("wine_view.daemon.PROFILES", [profile])
+    monkeypatch.setattr("wine_view.daemon.remote_debugging_toggle_profiles", lambda: [profile])
+    monkeypatch.setattr("wine_view.daemon._devtools_port_live", lambda _profile: False)
     monkeypatch.setattr("platform.system", lambda: "Linux")
     monkeypatch.setattr("subprocess.Popen", lambda *_args, **_kwargs: process)
     killed = []
@@ -106,10 +106,10 @@ def test_explicit_chrome_path_remains_unowned_without_platform_cleanup(monkeypat
     (profile / "Local State").write_text('{}')
     process = FakeProcess()
 
-    monkeypatch.setenv("BH_CHROME_PATH", str(binary))
+    monkeypatch.setenv("WV_CHROME_PATH", str(binary))
     monkeypatch.delenv("CHROME_PATH", raising=False)
-    monkeypatch.setattr("browser_harness.daemon.PROFILES", [profile])
-    monkeypatch.setattr("browser_harness.daemon.remote_debugging_toggle_profiles", lambda: [profile])
+    monkeypatch.setattr("wine_view.daemon.PROFILES", [profile])
+    monkeypatch.setattr("wine_view.daemon.remote_debugging_toggle_profiles", lambda: [profile])
     monkeypatch.setattr("platform.system", lambda: system)
     monkeypatch.setattr("subprocess.Popen", lambda *_args, **_kwargs: process)
     monkeypatch.setattr(admin.os, "killpg", lambda *_args: pytest.fail("must not terminate an unowned browser"))
@@ -129,10 +129,10 @@ def test_explicit_unknown_browser_path_remains_unowned(monkeypatch, tmp_path):
     (profile / "Local State").write_text('{}')
     process = FakeProcess()
 
-    monkeypatch.setenv("BH_CHROME_PATH", str(binary))
+    monkeypatch.setenv("WV_CHROME_PATH", str(binary))
     monkeypatch.delenv("CHROME_PATH", raising=False)
-    monkeypatch.setattr("browser_harness.daemon.PROFILES", [profile])
-    monkeypatch.setattr("browser_harness.daemon.remote_debugging_toggle_profiles", lambda: [profile])
+    monkeypatch.setattr("wine_view.daemon.PROFILES", [profile])
+    monkeypatch.setattr("wine_view.daemon.remote_debugging_toggle_profiles", lambda: [profile])
     monkeypatch.setattr("subprocess.Popen", lambda *_args, **_kwargs: process)
 
     assert admin._launch_browser() == (process, None)
@@ -140,7 +140,7 @@ def test_explicit_unknown_browser_path_remains_unowned(monkeypatch, tmp_path):
 
 @pytest.mark.parametrize("value", ["0", "false", "NO", " off "])
 def test_update_banner_can_be_disabled_without_network_or_cache_access(monkeypatch, value):
-    monkeypatch.setenv("BH_UPDATE_CHECK", value)
+    monkeypatch.setenv("WV_UPDATE_CHECK", value)
     monkeypatch.setattr(admin, "_cache_read", lambda: pytest.fail("cache should not be read"))
     monkeypatch.setattr(admin, "check_for_update", lambda: pytest.fail("network should not run"))
 
@@ -148,7 +148,7 @@ def test_update_banner_can_be_disabled_without_network_or_cache_access(monkeypat
 
 
 def test_update_banner_remains_enabled_by_default(monkeypatch):
-    monkeypatch.delenv("BH_UPDATE_CHECK", raising=False)
+    monkeypatch.delenv("WV_UPDATE_CHECK", raising=False)
     monkeypatch.setattr(admin, "_cache_read", lambda: {"banner_shown_on": "1970-01-01"})
     called = []
 
@@ -164,7 +164,7 @@ def test_update_banner_remains_enabled_by_default(monkeypatch):
 
 
 def test_local_chrome_mode_is_false_when_env_provides_remote_cdp():
-    assert not admin._is_local_chrome_mode({"BU_CDP_WS": "ws://example.test/devtools/browser/1"})
+    assert not admin._is_local_chrome_mode({"WV_CDP_WS": "ws://example.test/devtools/browser/1"})
 
 
 def test_require_existing_daemon_fails_without_spawning(monkeypatch):
@@ -229,7 +229,7 @@ def test_remote_start_retries_cleanup_and_preserves_both_failures(monkeypatch):
 
 
 def test_local_chrome_mode_is_false_when_process_env_provides_remote_cdp(monkeypatch):
-    monkeypatch.setenv("BU_CDP_WS", "ws://example.test/devtools/browser/1")
+    monkeypatch.setenv("WV_CDP_WS", "ws://example.test/devtools/browser/1")
 
     assert not admin._is_local_chrome_mode()
 
@@ -254,31 +254,31 @@ def test_stale_websocket_does_not_open_chrome_inspect():
 
 def test_daemon_endpoint_names_discovers_valid_socket_names(tmp_path, monkeypatch):
     monkeypatch.setattr(admin.ipc, "IS_WINDOWS", False)
-    monkeypatch.setattr(admin.ipc, "BH_RUNTIME_DIR", None)  # shared-tmpdir mode
+    monkeypatch.setattr(admin.ipc, "WV_RUNTIME_DIR", None)  # shared-tmpdir mode
     monkeypatch.setattr(admin.ipc, "_RUNTIME", tmp_path)
-    (tmp_path / "bu-default.sock").touch()
-    (tmp_path / "bu-remote_1.sock").touch()
-    (tmp_path / "bu-invalid.name.sock").touch()
-    (tmp_path / "not-bu-default.sock").touch()
+    (tmp_path / "wv-default.sock").touch()
+    (tmp_path / "wv-remote_1.sock").touch()
+    (tmp_path / "wv-invalid.name.sock").touch()
+    (tmp_path / "not-wv-default.sock").touch()
 
     assert admin._daemon_endpoint_names() == ["default", "remote_1"]
 
 
 def test_daemon_endpoint_names_with_bh_runtime_dir_returns_local_name_when_sock_exists(tmp_path, monkeypatch):
     monkeypatch.setattr(admin.ipc, "IS_WINDOWS", False)
-    monkeypatch.setattr(admin.ipc, "BH_RUNTIME_DIR", str(tmp_path))
-    monkeypatch.setattr(admin.ipc, "BH_RUNTIME_DIR_SHARED", False)
+    monkeypatch.setattr(admin.ipc, "WV_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.setattr(admin.ipc, "WV_RUNTIME_DIR_SHARED", False)
     monkeypatch.setattr(admin.ipc, "_RUNTIME", tmp_path)
     monkeypatch.setattr(admin, "NAME", "session-xyz")
-    (tmp_path / "bu.sock").touch()
+    (tmp_path / "wv.sock").touch()
 
     assert admin._daemon_endpoint_names() == ["session-xyz"]
 
 
 def test_daemon_endpoint_names_with_bh_runtime_dir_returns_empty_when_sock_missing(tmp_path, monkeypatch):
     monkeypatch.setattr(admin.ipc, "IS_WINDOWS", False)
-    monkeypatch.setattr(admin.ipc, "BH_RUNTIME_DIR", str(tmp_path))
-    monkeypatch.setattr(admin.ipc, "BH_RUNTIME_DIR_SHARED", False)
+    monkeypatch.setattr(admin.ipc, "WV_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.setattr(admin.ipc, "WV_RUNTIME_DIR_SHARED", False)
     monkeypatch.setattr(admin.ipc, "_RUNTIME", tmp_path)
     monkeypatch.setattr(admin, "NAME", "session-xyz")
 
@@ -287,13 +287,13 @@ def test_daemon_endpoint_names_with_bh_runtime_dir_returns_empty_when_sock_missi
 
 def test_daemon_endpoint_names_with_shared_bh_runtime_dir_discovers_named_sockets(tmp_path, monkeypatch):
     monkeypatch.setattr(admin.ipc, "IS_WINDOWS", False)
-    monkeypatch.setattr(admin.ipc, "BH_RUNTIME_DIR", str(tmp_path))
-    monkeypatch.setattr(admin.ipc, "BH_RUNTIME_DIR_SHARED", True)
+    monkeypatch.setattr(admin.ipc, "WV_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.setattr(admin.ipc, "WV_RUNTIME_DIR_SHARED", True)
     monkeypatch.setattr(admin.ipc, "_RUNTIME", tmp_path)
-    (tmp_path / "bu-default.sock").touch()
-    (tmp_path / "bu-work.sock").touch()
-    (tmp_path / "bu-invalid.name.sock").touch()
-    (tmp_path / "bu.sock").touch()  # stale isolated-runtime endpoint
+    (tmp_path / "wv-default.sock").touch()
+    (tmp_path / "wv-work.sock").touch()
+    (tmp_path / "wv-invalid.name.sock").touch()
+    (tmp_path / "wv.sock").touch()  # stale isolated-runtime endpoint
 
     assert admin._daemon_endpoint_names() == ["default", "work"]
 
@@ -386,7 +386,7 @@ def test_doctor_probe_preserves_snap_bin_env_symlink(monkeypatch, tmp_path):
     chromium = snap_bin / "chromium"
     chromium.symlink_to(target)
 
-    monkeypatch.setenv("BH_CHROME_PATH", str(chromium))
+    monkeypatch.setenv("WV_CHROME_PATH", str(chromium))
     monkeypatch.delenv("CHROME_PATH", raising=False)
 
     name, path = admin._doctor_probe_chrome_binary_for_snap()
@@ -405,7 +405,7 @@ def test_doctor_probe_preserves_snap_bin_path_symlink(monkeypatch, tmp_path):
     chromium = snap_bin / "chromium"
     chromium.symlink_to(target)
 
-    monkeypatch.delenv("BH_CHROME_PATH", raising=False)
+    monkeypatch.delenv("WV_CHROME_PATH", raising=False)
     monkeypatch.delenv("CHROME_PATH", raising=False)
 
     def fake_which(cmd):
@@ -430,7 +430,7 @@ def test_run_doctor_prints_snap_detect_on_linux_when_probe_is_snap(monkeypatch, 
     monkeypatch.setattr(admin, "_doctor_probe_chrome_binary_for_snap", lambda: ("chromium", "/snap/chromium/1/usr/bin/chromium"))
     monkeypatch.setattr("platform.system", lambda: "Linux")
     monkeypatch.setattr("shutil.which", lambda _cmd: None)
-    monkeypatch.delenv("BROWSER_USE_API_KEY", raising=False)
+    monkeypatch.delenv("WINE_VIEW_API_KEY", raising=False)
 
     assert admin.run_doctor() == 1
 
@@ -451,7 +451,7 @@ def test_run_doctor_skips_snap_detect_on_non_linux(monkeypatch, capsys):
     monkeypatch.setattr(admin, "_doctor_probe_chrome_binary_for_snap", lambda: ("chromium", "/snap/chromium/1/usr/bin/chromium"))
     monkeypatch.setattr("platform.system", lambda: "Darwin")
     monkeypatch.setattr("shutil.which", lambda _cmd: None)
-    monkeypatch.delenv("BROWSER_USE_API_KEY", raising=False)
+    monkeypatch.delenv("WINE_VIEW_API_KEY", raising=False)
 
     assert admin.run_doctor() == 0
 
@@ -480,10 +480,10 @@ def test_run_doctor_reports_bad_stored_cloud_auth_without_crashing(monkeypatch, 
 def test_run_doctor_fix_snap_prints_steps(capsys):
     assert admin.run_doctor_fix_snap() == 0
     out = capsys.readouterr().out
-    assert "browser-harness doctor --fix-snap" in out
-    assert "BH_CHROME_PATH" in out
+    assert "wine-view doctor --fix-snap" in out
+    assert "WV_CHROME_PATH" in out
     assert "google-chrome-stable_current_amd64.deb" in out
-    assert "browser-harness --doctor" in out
+    assert "wine-view --doctor" in out
 
 
 def test_run_doctor_prints_active_browser_connections_and_active_pages(monkeypatch, capsys):
@@ -503,7 +503,7 @@ def test_run_doctor_prints_active_browser_connections_and_active_pages(monkeypat
     ])
     monkeypatch.setattr(admin, "_latest_release_tag", lambda: "0.1.0")
     monkeypatch.setattr("shutil.which", lambda _cmd: None)
-    monkeypatch.delenv("BROWSER_USE_API_KEY", raising=False)
+    monkeypatch.delenv("WINE_VIEW_API_KEY", raising=False)
 
     assert admin.run_doctor() == 0
 
@@ -527,7 +527,7 @@ def test_doctor_page_output_truncates_long_text(monkeypatch, capsys):
     ])
     monkeypatch.setattr(admin, "_latest_release_tag", lambda: "0.1.0")
     monkeypatch.setattr("shutil.which", lambda _cmd: None)
-    monkeypatch.delenv("BROWSER_USE_API_KEY", raising=False)
+    monkeypatch.delenv("WINE_VIEW_API_KEY", raising=False)
 
     assert admin.run_doctor() == 0
 
@@ -903,31 +903,31 @@ def _fake_install(monkeypatch, package_dir):
 
 
 def test_repo_dir_detects_editable_src_layout_clone(tmp_path, monkeypatch):
-    """The real case this exists for: `src/browser_harness` inside a git clone."""
-    clone = tmp_path / "browser-harness"
+    """The real case this exists for: `src/wine_view` inside a git clone."""
+    clone = tmp_path / "wine-view"
     (clone / ".git").mkdir(parents=True)
-    _fake_install(monkeypatch, clone / "src" / "browser_harness")
+    _fake_install(monkeypatch, clone / "src" / "wine_view")
 
     assert admin._repo_dir() == clone
 
 
 def test_repo_dir_detects_flat_layout_clone(tmp_path, monkeypatch):
-    clone = tmp_path / "browser-harness"
+    clone = tmp_path / "wine-view"
     (clone / ".git").mkdir(parents=True)
-    _fake_install(monkeypatch, clone / "browser_harness")
+    _fake_install(monkeypatch, clone / "wine_view")
 
     assert admin._repo_dir() == clone
 
 
 def test_repo_dir_ignores_repo_enclosing_an_installed_wheel(tmp_path, monkeypatch):
     """A wheel installed into a venv inside the user's own project is NOT a
-    browser-harness clone. Claiming it would make run_update() `git pull` an
+    wine-view clone. Claiming it would make run_update() `git pull` an
     unrelated repository instead of upgrading the package."""
     project = tmp_path / "my-project"
     (project / ".git").mkdir(parents=True)
     _fake_install(
         monkeypatch,
-        project / ".venv" / "lib" / "python3.12" / "site-packages" / "browser_harness",
+        project / ".venv" / "lib" / "python3.12" / "site-packages" / "wine_view",
     )
 
     assert admin._repo_dir() is None
@@ -939,14 +939,14 @@ def test_repo_dir_ignores_dotfiles_repo_above_a_tool_install(tmp_path, monkeypat
     (home / ".git").mkdir(parents=True)
     _fake_install(
         monkeypatch,
-        home / ".local/share/uv/tools/browser-harness/lib/python3.12/site-packages/browser_harness",
+        home / ".local/share/uv/tools/wine-view/lib/python3.12/site-packages/wine_view",
     )
 
     assert admin._repo_dir() is None
 
 
 def test_run_update_of_installed_wheel_never_pulls_an_enclosing_repo(tmp_path, monkeypatch):
-    """End-to-end symptom: `browser-harness --update -y` must upgrade the
+    """End-to-end symptom: `wine-view --update -y` must upgrade the
     package, not run git against the repository that happens to contain it."""
     import subprocess
 
@@ -954,7 +954,7 @@ def test_run_update_of_installed_wheel_never_pulls_an_enclosing_repo(tmp_path, m
     (project / ".git").mkdir(parents=True)
     _fake_install(
         monkeypatch,
-        project / ".venv" / "lib" / "python3.12" / "site-packages" / "browser_harness",
+        project / ".venv" / "lib" / "python3.12" / "site-packages" / "wine_view",
     )
     monkeypatch.setattr(admin, "_version", lambda: "0.1.0")
     monkeypatch.setattr(admin, "_latest_release_tag", lambda *a, **k: "0.2.0")
@@ -973,7 +973,7 @@ def test_run_update_of_installed_wheel_never_pulls_an_enclosing_repo(tmp_path, m
     assert not any(command[:1] == ["git"] for command in commands), (
         f"run_update must not shell out to git for a wheel install; ran {commands}"
     )
-    assert ["uv", "tool", "upgrade", "browser-harness"] in commands
+    assert ["uv", "tool", "upgrade", "wine-view"] in commands
 
 def _wheel_update_env(tmp_path, monkeypatch):
     """Set up a wheel install so run_update() takes the pypi branch."""
@@ -981,7 +981,7 @@ def _wheel_update_env(tmp_path, monkeypatch):
     (project / ".git").mkdir(parents=True)
     _fake_install(
         monkeypatch,
-        project / ".venv" / "lib" / "python3.12" / "site-packages" / "browser_harness",
+        project / ".venv" / "lib" / "python3.12" / "site-packages" / "wine_view",
     )
     monkeypatch.setattr(admin, "_version", lambda: "0.1.0")
     monkeypatch.setattr(admin, "_latest_release_tag", lambda *a, **k: "0.2.0")
@@ -1000,12 +1000,12 @@ def test_failed_upgrade_tells_a_pip_install_how_to_upgrade(tmp_path, monkeypatch
     def fake_run(command, *args, **kwargs):
         if list(command)[:3] == ["uv", "tool", "list"]:
             return subprocess.CompletedProcess(command, 0, "some-other-tool v1.0.0\n", "")
-        return subprocess.CompletedProcess(command, 1, "", "`browser-harness` is not installed")
+        return subprocess.CompletedProcess(command, 1, "", "`wine-view` is not installed")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
     assert admin.run_update(yes=True) == 1
-    assert "uv tool install --python 3.12 --upgrade --force browser-harness" in capsys.readouterr().err
+    assert "uv tool install --python 3.12 --upgrade --force wine-view" in capsys.readouterr().err
 
 def test_failed_upgrade_stays_quiet_for_a_uv_managed_install(tmp_path, monkeypatch, capsys):
     """When uv owns the tool the failure is uv's own (offline, auth), so a pip hint
@@ -1016,7 +1016,7 @@ def test_failed_upgrade_stays_quiet_for_a_uv_managed_install(tmp_path, monkeypat
 
     def fake_run(command, *args, **kwargs):
         if list(command)[:3] == ["uv", "tool", "list"]:
-            return subprocess.CompletedProcess(command, 0, "browser-harness v0.1.0\n", "")
+            return subprocess.CompletedProcess(command, 0, "wine-view v0.1.0\n", "")
         return subprocess.CompletedProcess(command, 1, "", "network unreachable")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
@@ -1033,14 +1033,14 @@ def test_failed_upgrade_ignores_a_lookalike_uv_tool_name(tmp_path, monkeypatch, 
     def fake_run(command, *args, **kwargs):
         if list(command)[:3] == ["uv", "tool", "list"]:
             return subprocess.CompletedProcess(
-                command, 0, "my-browser-harness-wrapper v2.0.0\n- bhw\n", ""
+                command, 0, "my-wine-view-wrapper v2.0.0\n- bhw\n", ""
             )
-        return subprocess.CompletedProcess(command, 1, "", "`browser-harness` is not installed")
+        return subprocess.CompletedProcess(command, 1, "", "`wine-view` is not installed")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
     assert admin.run_update(yes=True) == 1
-    assert "uv tool install --python 3.12 --upgrade --force browser-harness" in capsys.readouterr().err
+    assert "uv tool install --python 3.12 --upgrade --force wine-view" in capsys.readouterr().err
 # --- Chrome's "Allow remote debugging?" popup: one pending startup per name --
 # Chrome 144+ raises the popup per CDP connection, and the connection that
 # raised it is what keeps it on screen. ensure_daemon used to kill that daemon
@@ -1050,7 +1050,7 @@ def test_failed_upgrade_ignores_a_lookalike_uv_tool_name(tmp_path, monkeypatch, 
 
 def _park_daemon(tmp_path, monkeypatch, pid, *, is_daemon=True):
     """Simulate a daemon parked on the popup: pid file + fresh handshake log."""
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     monkeypatch.setattr(admin_mod, "_log_tail", lambda name=None: "handshake-wait: click Allow")
     log_file = tmp_path / "daemon.log"
@@ -1063,14 +1063,14 @@ def _park_daemon(tmp_path, monkeypatch, pid, *, is_daemon=True):
 
 
 def test_parked_daemon_is_detected_from_pid_file_and_log(tmp_path, monkeypatch):
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     _park_daemon(tmp_path, monkeypatch, os.getpid())
     assert admin_mod._parked_daemon_pid() == os.getpid()
 
 
 def test_parked_daemon_liveness_never_uses_os_kill(tmp_path, monkeypatch):
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     _park_daemon(tmp_path, monkeypatch, os.getpid())
     monkeypatch.setattr(admin_mod, "_pending_pid_record", lambda path: os.getpid())
@@ -1079,14 +1079,14 @@ def test_parked_daemon_liveness_never_uses_os_kill(tmp_path, monkeypatch):
 
 
 def test_parked_daemon_ignored_when_the_process_is_gone(tmp_path, monkeypatch):
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     _park_daemon(tmp_path, monkeypatch, 2147480000, is_daemon=False)  # never a live daemon
     assert admin_mod._parked_daemon_pid() is None
 
 
 def test_parked_daemon_ignored_without_the_handshake_breadcrumb(tmp_path, monkeypatch):
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     _park_daemon(tmp_path, monkeypatch, os.getpid())
     monkeypatch.setattr(admin_mod, "_log_tail", lambda name=None: "connecting to ws://...")
@@ -1095,7 +1095,7 @@ def test_parked_daemon_ignored_without_the_handshake_breadcrumb(tmp_path, monkey
 
 def test_ensure_daemon_waits_for_the_parked_daemon_instead_of_spawning(tmp_path, monkeypatch):
     """The second invocation must join the popup already on screen."""
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     _park_daemon(tmp_path, monkeypatch, os.getpid())
     monkeypatch.setattr(admin_mod, "_is_local_chrome_mode", lambda env: True)
@@ -1116,7 +1116,7 @@ def test_ensure_daemon_waits_for_the_parked_daemon_instead_of_spawning(tmp_path,
 
 def test_ensure_daemon_returns_when_the_parked_daemon_finishes(tmp_path, monkeypatch):
     """Clicking Allow completes the parked handshake; no new daemon needed."""
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     _park_daemon(tmp_path, monkeypatch, os.getpid())
     monkeypatch.setattr(admin_mod, "_is_local_chrome_mode", lambda env: True)
@@ -1132,7 +1132,7 @@ def test_ensure_daemon_returns_when_the_parked_daemon_finishes(tmp_path, monkeyp
 
 def test_ensure_daemon_does_not_replace_pending_approval_that_exited(tmp_path, monkeypatch):
     """A failed approval attempt must not create another Chrome prompt."""
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     pid_file = tmp_path / "daemon.pid"
     log_file = tmp_path / "daemon.log"
@@ -1162,7 +1162,7 @@ def test_ensure_daemon_does_not_replace_pending_approval_that_exited(tmp_path, m
 
 
 def test_dead_pending_cleanup_does_not_unlink_successor(tmp_path, monkeypatch):
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     pid_file = tmp_path / "daemon.pid"
     log_file = tmp_path / "daemon.log"
@@ -1189,7 +1189,7 @@ def test_dead_pending_cleanup_does_not_unlink_successor(tmp_path, monkeypatch):
 
 
 def test_default_local_approval_has_no_deadline_without_affecting_remote():
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     assert admin_mod._daemon_wait_windows(None, local=True) == (60.0, None)
     assert admin_mod._daemon_wait_windows(None, local=False) == (60.0, 60.0)
@@ -1197,7 +1197,7 @@ def test_default_local_approval_has_no_deadline_without_affecting_remote():
 
 
 def test_permission_blocked_exit_is_not_retried(tmp_path, monkeypatch):
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     pid_file = tmp_path / "daemon.pid"
     log_file = tmp_path / "daemon.log"
@@ -1232,7 +1232,7 @@ def test_permission_blocked_exit_is_not_retried(tmp_path, monkeypatch):
 
 def test_cold_spawn_publishes_child_before_releasing_lock(tmp_path, monkeypatch):
     """A second cold caller sees the first child before its log exists."""
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     pid_file = tmp_path / "daemon.pid"
     log_file = tmp_path / "daemon.log"
@@ -1272,7 +1272,7 @@ def test_cold_spawn_publishes_child_before_releasing_lock(tmp_path, monkeypatch)
 
 def test_starting_daemon_survives_wall_clock_age_before_log(tmp_path, monkeypatch):
     """Sleep can age the PID mtime before the child writes handshake-wait."""
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     pid_file = tmp_path / "daemon.pid"
     pid_file.write_text(json.dumps({"pid": os.getpid(), "started": "start"}))
@@ -1285,7 +1285,7 @@ def test_starting_daemon_survives_wall_clock_age_before_log(tmp_path, monkeypatc
 
 def test_parked_daemon_ignored_when_the_pid_was_reused(tmp_path, monkeypatch):
     """A recycled pid belonging to something else must not look parked."""
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     _park_daemon(tmp_path, monkeypatch, os.getpid(), is_daemon=False)
     assert admin_mod._parked_daemon_pid() is None
@@ -1293,7 +1293,7 @@ def test_parked_daemon_ignored_when_the_pid_was_reused(tmp_path, monkeypatch):
 
 def test_parked_daemon_survives_wall_clock_age_while_process_is_live(tmp_path, monkeypatch):
     """A live pending approval has no age-based expiry, including across sleep."""
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     _park_daemon(tmp_path, monkeypatch, os.getpid())
     stale = time.time() - 86400
@@ -1302,7 +1302,7 @@ def test_parked_daemon_survives_wall_clock_age_while_process_is_live(tmp_path, m
 
 
 def test_spawn_lock_is_exclusive_then_released(tmp_path, monkeypatch):
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     monkeypatch.setattr(admin_mod.ipc, "pid_path", lambda name: tmp_path / "daemon.pid")
     with admin_mod._spawn_lock(timeout=0.2) as first:
@@ -1314,7 +1314,7 @@ def test_spawn_lock_is_exclusive_then_released(tmp_path, monkeypatch):
 
 
 def test_spawn_lock_does_not_expire_while_owner_is_alive(tmp_path, monkeypatch):
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     monkeypatch.setattr(admin_mod.ipc, "pid_path", lambda name: tmp_path / "daemon.pid")
     with admin_mod._spawn_lock(timeout=0.1) as first:
@@ -1325,7 +1325,7 @@ def test_spawn_lock_does_not_expire_while_owner_is_alive(tmp_path, monkeypatch):
 
 
 def test_spawn_lock_owner_cannot_unlink_successor(tmp_path, monkeypatch):
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     monkeypatch.setattr(admin_mod.ipc, "pid_path", lambda name: tmp_path / "daemon.pid")
     first = admin_mod._spawn_lock(timeout=0.1)
@@ -1336,7 +1336,7 @@ def test_spawn_lock_owner_cannot_unlink_successor(tmp_path, monkeypatch):
 
 
 def test_process_identity_check_fails_closed_when_unavailable(monkeypatch):
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     def unavailable(*args, **kwargs):
         raise FileNotFoundError
@@ -1346,7 +1346,7 @@ def test_process_identity_check_fails_closed_when_unavailable(monkeypatch):
 
 
 def test_pending_pid_record_rejects_reused_pid(tmp_path, monkeypatch):
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     pid_file = tmp_path / "daemon.pid"
     pid_file.write_text(json.dumps({"pid": os.getpid(), "started": "old-start"}))
@@ -1357,7 +1357,7 @@ def test_pending_pid_record_rejects_reused_pid(tmp_path, monkeypatch):
 def test_restart_daemon_stops_exact_fingerprinted_pending_approval(tmp_path, monkeypatch):
     import signal
 
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     pid_file = tmp_path / "daemon.pid"
     pid_file.write_text(json.dumps({"pid": 4321, "started": "same-start"}))
@@ -1377,7 +1377,7 @@ def test_restart_daemon_stops_exact_fingerprinted_pending_approval(tmp_path, mon
 
 
 def test_restart_daemon_never_signals_reused_pending_pid(tmp_path, monkeypatch):
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     pid_file = tmp_path / "daemon.pid"
     pid_file.write_text(json.dumps({"pid": 4321, "started": "old-start"}))
@@ -1399,7 +1399,7 @@ def test_restart_daemon_never_signals_reused_pending_pid(tmp_path, monkeypatch):
 
 
 def test_restart_daemon_preserves_live_pending_without_fingerprint(tmp_path, monkeypatch):
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     pid_file = tmp_path / "daemon.pid"
     pid_file.write_text("4321")
@@ -1422,7 +1422,7 @@ def test_restart_daemon_preserves_live_pending_without_fingerprint(tmp_path, mon
 
 
 def test_restart_daemon_does_not_cancel_successor_generation(tmp_path, monkeypatch):
-    from browser_harness import admin as admin_mod
+    from wine_view import admin as admin_mod
 
     pid_file = tmp_path / "daemon.pid"
     pid_file.write_text(json.dumps({"pid": 111, "started": "old-start"}))

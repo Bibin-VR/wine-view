@@ -55,7 +55,7 @@ a scripted client (typed the URL by hand).
 ### Path A — build the canonical URL (preferred when you know cityId)
 
 ```python
-from browser_harness.helpers import new_tab, wait_for_load
+from wine_view.helpers import new_tab, wait_for_load
 import time
 url = (
     "https://hotels.ctrip.com/hotels/list"
@@ -74,7 +74,7 @@ a `<div>`, not `<button>` (same as ly.com — see "search button gotcha"
 below):
 
 ```python
-from browser_harness.helpers import new_tab, wait_for_load, js, click_at_xy, type_text, press_key
+from wine_view.helpers import new_tab, wait_for_load, js, click_at_xy, type_text, press_key
 import time
 
 new_tab("https://hotels.ctrip.com/")
@@ -162,7 +162,7 @@ https://hotels.ctrip.com/hotel/<hotelId>.html?checkin=YYYY-MM-DD&checkout=YYYY-M
 
 Works pre-login. Server normalizes to `/hotels/detail/?...` but the data is
 identical. Title format: `🟢 <hotelName>预订价格,联系电话位置地址【携程酒店】`
-(the 🟢 prefix is from `browser-harness`, not ctrip).
+(the 🟢 prefix is from `wine-view`, not ctrip).
 
 Detail page renders multiple room-rate rows with the same `¥orig ¥current`
 shape as the list. Look for `<button>` or `<a>` whose text is exactly `预订`
@@ -254,7 +254,7 @@ Get more by driving the homepage flow once and reading the canonical URL.
 ## Quick start
 
 ```python
-from browser_harness.helpers import new_tab, wait_for_load, js, cdp
+from wine_view.helpers import new_tab, wait_for_load, js, cdp
 import time, json
 
 url = (

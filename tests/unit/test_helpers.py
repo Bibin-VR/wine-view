@@ -6,12 +6,12 @@ from unittest.mock import patch
 import pytest
 from PIL import Image
 
-from browser_harness import helpers
+from wine_view import helpers
 
 
 def _run(fake_png, width, height, **kwargs):
     fake = lambda method, **_: {"data": fake_png(width, height)}
-    with patch("browser_harness.helpers.cdp", side_effect=fake), tempfile.TemporaryDirectory() as d:
+    with patch("wine_view.helpers.cdp", side_effect=fake), tempfile.TemporaryDirectory() as d:
         path = os.path.join(d, "shot.png")
         helpers.capture_screenshot(path, **kwargs)
         return Image.open(path).size
@@ -41,8 +41,8 @@ def test_send_keeps_connect_timeout_short_and_sets_response_budget():
             pass
 
     socket = FakeSocket()
-    with patch("browser_harness.helpers.ipc.connect", return_value=(socket, None)) as connect, \
-         patch("browser_harness.helpers.ipc.request", return_value={}):
+    with patch("wine_view.helpers.ipc.connect", return_value=(socket, None)) as connect, \
+         patch("wine_view.helpers.ipc.request", return_value={}):
         helpers._send({"meta": "ping"}, response_timeout=60.0)
 
     connect.assert_called_once_with(helpers.NAME, timeout=helpers.IPC_CONNECT_TIMEOUT_SECONDS)
@@ -51,7 +51,7 @@ def test_send_keeps_connect_timeout_short_and_sets_response_budget():
 
 def test_screenshot_uses_long_response_timeout_without_forwarding_it_to_cdp(fake_png, tmp_path):
     with patch(
-        "browser_harness.helpers._send",
+        "wine_view.helpers._send",
         return_value={"result": {"data": fake_png(800, 400)}},
     ) as send:
         helpers.capture_screenshot(str(tmp_path / "shot.png"))
@@ -68,7 +68,7 @@ def test_screenshot_uses_long_response_timeout_without_forwarding_it_to_cdp(fake
 
 
 def test_screenshot_timeout_has_context(tmp_path):
-    with patch("browser_harness.helpers._send", side_effect=helpers._IPCResponseTimeout):
+    with patch("wine_view.helpers._send", side_effect=helpers._IPCResponseTimeout):
         with pytest.raises(RuntimeError, match="Page.captureScreenshot timed out after 60s"):
             helpers.capture_screenshot(str(tmp_path / "shot.png"))
 
@@ -80,19 +80,19 @@ def _seed_skill(tmp_path):
 
 
 def test_goto_url_omits_domain_skills_by_default(tmp_path, monkeypatch):
-    monkeypatch.delenv("BH_DOMAIN_SKILLS", raising=False)
+    monkeypatch.delenv("WV_DOMAIN_SKILLS", raising=False)
     monkeypatch.setattr(helpers, "AGENT_WORKSPACE", tmp_path)
     _seed_skill(tmp_path)
-    with patch("browser_harness.helpers.cdp", return_value={"frameId": "f"}):
+    with patch("wine_view.helpers.cdp", return_value={"frameId": "f"}):
         result = helpers.goto_url("https://www.example.com/")
     assert result == {"frameId": "f"}
 
 
 def test_goto_url_includes_domain_skills_when_enabled(tmp_path, monkeypatch):
-    monkeypatch.setenv("BH_DOMAIN_SKILLS", "1")
+    monkeypatch.setenv("WV_DOMAIN_SKILLS", "1")
     monkeypatch.setattr(helpers, "AGENT_WORKSPACE", tmp_path)
     _seed_skill(tmp_path)
-    with patch("browser_harness.helpers.cdp", return_value={"frameId": "f"}):
+    with patch("wine_view.helpers.cdp", return_value={"frameId": "f"}):
         result = helpers.goto_url("https://www.example.com/")
     assert result == {"frameId": "f", "domain_skills": ["scraping.md"]}
 
@@ -115,8 +115,8 @@ def test_page_info_raises_clear_error_on_js_exception():
             },
         }
 
-    with patch("browser_harness.helpers._send", side_effect=fake_send), \
-         patch("browser_harness.helpers.cdp", side_effect=fake_cdp):
+    with patch("wine_view.helpers._send", side_effect=fake_send), \
+         patch("wine_view.helpers.cdp", side_effect=fake_cdp):
         with pytest.raises(RuntimeError, match="ReferenceError"):
             helpers.page_info()
 
@@ -135,8 +135,8 @@ def test_fill_input_focuses_types_and_fires_events():
         js_calls.append(expr)
         return True  # focus call must return True (element found)
 
-    with patch("browser_harness.helpers.cdp", side_effect=fake_cdp), \
-         patch("browser_harness.helpers.js", side_effect=fake_js):
+    with patch("wine_view.helpers.cdp", side_effect=fake_cdp), \
+         patch("wine_view.helpers.js", side_effect=fake_js):
         helpers.fill_input("#my-input", "hello")
 
     assert any("#my-input" in e for e in js_calls)
@@ -149,7 +149,7 @@ def test_fill_input_raises_when_element_not_found():
     def fake_js(expr, **kwargs):
         return False  # element not found
 
-    with patch("browser_harness.helpers.js", side_effect=fake_js):
+    with patch("wine_view.helpers.js", side_effect=fake_js):
         with pytest.raises(RuntimeError, match="element not found"):
             helpers.fill_input("#missing", "hello")
 
@@ -167,8 +167,8 @@ def _fill_input_cdp_calls(monkeypatch, user_agent, texts=("x",)):
         calls.append((method, kwargs))
         return {"userAgent": user_agent} if method == "Browser.getVersion" and user_agent is not None else {}
 
-    with patch("browser_harness.helpers.cdp", side_effect=fake_cdp), \
-         patch("browser_harness.helpers.js", return_value=True):  # element found
+    with patch("wine_view.helpers.cdp", side_effect=fake_cdp), \
+         patch("wine_view.helpers.js", return_value=True):  # element found
         for text in texts:
             helpers.fill_input("#inp", text, clear_first=True)
     return calls
@@ -229,8 +229,8 @@ def test_fill_input_no_clear_skips_ctrl_a():
     def fake_js(expr, **kwargs):
         return True  # element found
 
-    with patch("browser_harness.helpers.cdp", side_effect=fake_cdp), \
-         patch("browser_harness.helpers.js", side_effect=fake_js):
+    with patch("wine_view.helpers.cdp", side_effect=fake_cdp), \
+         patch("wine_view.helpers.js", side_effect=fake_js):
         helpers.fill_input("#inp", "x", clear_first=False)
 
     keys_seen = [e.get("key") for e in key_events if e.get("type") == "keyDown"]
@@ -243,7 +243,7 @@ def test_wait_for_element_returns_true_when_found_immediately():
     def fake_js(expr, **kwargs):
         return True
 
-    with patch("browser_harness.helpers.js", side_effect=fake_js):
+    with patch("wine_view.helpers.js", side_effect=fake_js):
         assert helpers.wait_for_element("#target", timeout=2.0) is True
 
 
@@ -251,8 +251,8 @@ def test_wait_for_element_returns_false_on_timeout():
     def fake_js(expr, **kwargs):
         return False
 
-    with patch("browser_harness.helpers.js", side_effect=fake_js), \
-         patch("browser_harness.helpers.time") as mock_time:
+    with patch("wine_view.helpers.js", side_effect=fake_js), \
+         patch("wine_view.helpers.time") as mock_time:
         # simulate time advancing past the deadline immediately
         start = time.time()
         mock_time.time.side_effect = [start, start + 5.0]
@@ -267,7 +267,7 @@ def test_wait_for_element_visible_uses_check_visibility():
         js_exprs.append(expr)
         return True
 
-    with patch("browser_harness.helpers.js", side_effect=fake_js):
+    with patch("wine_view.helpers.js", side_effect=fake_js):
         helpers.wait_for_element("#btn", visible=True)
 
     # Prefers checkVisibility (walks ancestor chain) with a computed-style
@@ -285,7 +285,7 @@ def test_wait_for_element_non_visible_uses_simple_check():
         js_exprs.append(expr)
         return True
 
-    with patch("browser_harness.helpers.js", side_effect=fake_js):
+    with patch("wine_view.helpers.js", side_effect=fake_js):
         helpers.wait_for_element("#btn", visible=False)
 
     assert any("querySelector" in e and "offsetParent" not in e for e in js_exprs)
@@ -301,8 +301,8 @@ def test_wait_for_network_idle_returns_true_when_no_events():
         call_count += 1
         return {"events": []}
 
-    with patch("browser_harness.helpers._send", side_effect=fake_send), \
-         patch("browser_harness.helpers.time") as mock_time:
+    with patch("wine_view.helpers._send", side_effect=fake_send), \
+         patch("wine_view.helpers.time") as mock_time:
         start = 1000.0
         # first call: not idle yet; second call: idle window elapsed
         mock_time.time.side_effect = [start, start, start, start + 0.6, start + 0.6]
@@ -330,8 +330,8 @@ def test_wait_for_network_idle_waits_for_inflight_request():
         idx += 1
         return {"events": evs}
 
-    with patch("browser_harness.helpers._send", side_effect=fake_send), \
-         patch("browser_harness.helpers.time") as mock_time:
+    with patch("wine_view.helpers._send", side_effect=fake_send), \
+         patch("wine_view.helpers.time") as mock_time:
         start = 1000.0
         # inflight non-empty → short-circuit skips time.time() in idle check for iter1/iter2
         mock_time.time.side_effect = [
@@ -360,8 +360,8 @@ def test_wait_for_network_idle_returns_false_on_timeout():
     def fake_send(req):
         return {"events": [{"method": "Network.requestWillBeSent", "params": {"requestId": "r"}}]}
 
-    with patch("browser_harness.helpers._send", side_effect=fake_send), \
-         patch("browser_harness.helpers.time") as mock_time:
+    with patch("wine_view.helpers._send", side_effect=fake_send), \
+         patch("wine_view.helpers.time") as mock_time:
         start = 1000.0
         mock_time.time.side_effect = [
             start, start,       # deadline + last_activity init
@@ -408,8 +408,8 @@ def test_wait_for_network_idle_filters_events_to_active_session():
             return {"events": evs}
         return {}
 
-    with patch("browser_harness.helpers._send", side_effect=fake_send), \
-         patch("browser_harness.helpers.time") as mock_time:
+    with patch("wine_view.helpers._send", side_effect=fake_send), \
+         patch("wine_view.helpers.time") as mock_time:
         start = 1000.0
         # No inflight on active session → idle check uses time.time().
         mock_time.time.side_effect = [start, start, start, start + 0.6, start + 0.6]
@@ -427,7 +427,7 @@ def test_wait_for_network_idle_filters_events_to_active_session():
 @pytest.mark.parametrize("value", ["0", "false", "NO", "off"])
 def test_mark_tab_can_be_disabled(monkeypatch, value):
     calls = []
-    monkeypatch.setenv("BH_TAB_MARKER", value)
+    monkeypatch.setenv("WV_TAB_MARKER", value)
     monkeypatch.setattr(
         helpers,
         "cdp",
@@ -522,7 +522,7 @@ def _key_events(key, modifiers=0):
             events.append(kwargs)
         return {}
 
-    with patch("browser_harness.helpers.cdp", side_effect=fake_cdp):
+    with patch("wine_view.helpers.cdp", side_effect=fake_cdp):
         helpers.press_key(key, modifiers)
     return events
 
@@ -615,8 +615,8 @@ def test_fill_input_types_each_character_as_a_real_key():
             events.append(kwargs)
         return {}
 
-    with patch("browser_harness.helpers.cdp", side_effect=fake_cdp), \
-         patch("browser_harness.helpers.js", side_effect=lambda *_a, **_k: True):
+    with patch("wine_view.helpers.cdp", side_effect=fake_cdp), \
+         patch("wine_view.helpers.js", side_effect=lambda *_a, **_k: True):
         helpers.fill_input("#inp", "Hi!", clear_first=False)
 
     typed = [(e["key"], e["code"], e["windowsVirtualKeyCode"], bool(e["modifiers"] & 8))
@@ -639,7 +639,7 @@ def _js_session_calls(expression, target_id, evaluate=None, detach=None):
             return detach(kwargs)
         return {}
 
-    with patch("browser_harness.helpers.cdp", side_effect=fake_cdp):
+    with patch("wine_view.helpers.cdp", side_effect=fake_cdp):
         try:
             helpers.js(expression, target_id=target_id)
         except RuntimeError:
@@ -697,7 +697,7 @@ def test_js_ignores_detach_of_a_session_chrome_already_dropped():
             return {"result": {"type": "number", "value": 7}}
         return gone(kwargs)
 
-    with patch("browser_harness.helpers.cdp", side_effect=fake_cdp):
+    with patch("wine_view.helpers.cdp", side_effect=fake_cdp):
         assert helpers.js("7", target_id="iframe-target") == 7
     assert calls[-1] == "Target.detachFromTarget"
 
@@ -710,7 +710,7 @@ def test_js_surfaces_an_unexpected_detach_failure_after_success():
             return {"result": {"type": "number", "value": 7}}
         raise RuntimeError("session broker unreachable")
 
-    with patch("browser_harness.helpers.cdp", side_effect=fake_cdp), pytest.raises(RuntimeError, match="session broker unreachable"):
+    with patch("wine_view.helpers.cdp", side_effect=fake_cdp), pytest.raises(RuntimeError, match="session broker unreachable"):
         helpers.js("7", target_id="iframe-target")
 
 
@@ -722,7 +722,7 @@ def test_js_keeps_the_evaluation_error_when_detach_also_fails():
             raise RuntimeError("evaluation failed")
         raise RuntimeError("daemon unreachable")
 
-    with patch("browser_harness.helpers.cdp", side_effect=fake_cdp), pytest.raises(RuntimeError, match="evaluation failed"):
+    with patch("wine_view.helpers.cdp", side_effect=fake_cdp), pytest.raises(RuntimeError, match="evaluation failed"):
         helpers.js("7", target_id="iframe-target")
 
 
@@ -734,7 +734,7 @@ def test_js_keeps_base_exception_from_evaluation_when_detach_also_raises():
             raise KeyboardInterrupt("evaluation interrupted")
         raise KeyboardInterrupt("detach interrupted")
 
-    with patch("browser_harness.helpers.cdp", side_effect=fake_cdp), pytest.raises(
+    with patch("wine_view.helpers.cdp", side_effect=fake_cdp), pytest.raises(
         KeyboardInterrupt, match="evaluation interrupted"
     ):
         helpers.js("7", target_id="iframe-target")

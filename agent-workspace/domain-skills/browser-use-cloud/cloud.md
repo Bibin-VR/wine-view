@@ -1,7 +1,7 @@
 # Browser Use Cloud — Programmatic Automation
 
 `https://api.browser-use.com/api/v3` (REST). All five endpoints below were
-exercised end-to-end on 2026-05-05 with a real `BROWSER_USE_API_KEY`; the
+exercised end-to-end on 2026-05-05 with a real `WINE_VIEW_API_KEY`; the
 companion script `cleanup-zombies.py` next to this file *is* the
 field-test — running it lists active browsers and stops zombies via the
 same wire calls the harness uses internally.
@@ -19,7 +19,7 @@ returns a generic 401 silently):
 ```python
 import os
 HEADERS = {
-    "X-Browser-Use-API-Key": os.environ["BROWSER_USE_API_KEY"],
+    "X-Browser-Use-API-Key": os.environ["WINE_VIEW_API_KEY"],
     "Content-Type": "application/json",
 }
 ```
@@ -105,7 +105,7 @@ Returns the same shape as the listing items:
 }
 ```
 
-`browser_harness.admin.list_cloud_profiles()` already wraps the listing
+`wine_view.admin.list_cloud_profiles()` already wraps the listing
 + per-id GET; prefer it unless you need raw access.
 
 ## Companion script: `cleanup-zombies.py`
@@ -113,10 +113,10 @@ Returns the same shape as the listing items:
 A self-contained operator script next to this file. Run it with:
 
 ```bash
-BROWSER_USE_API_KEY=... python agent-workspace/domain-skills/browser-use-cloud/cleanup-zombies.py
+WINE_VIEW_API_KEY=... python agent-workspace/domain-skills/browser-use-cloud/cleanup-zombies.py
 # stops every active browser older than 30 minutes (default)
 
-BROWSER_USE_API_KEY=... python .../cleanup-zombies.py --older-than 5 --dry-run
+WINE_VIEW_API_KEY=... python .../cleanup-zombies.py --older-than 5 --dry-run
 # preview only; no PATCH /stop sent
 ```
 
@@ -169,9 +169,9 @@ real Chrome once, then retry.
   `c or []`.
 - **`liveUrl` host is `live.browser-use.com`**, not
   `cloud.browser-use.com`. They're separate surfaces.
-- **`start_remote_daemon` overwrites `BU_CDP_WS`** in the daemon env;
+- **`start_remote_daemon` overwrites `WV_CDP_WS`** in the daemon env;
   re-read from `browser["cdpUrl"]` if you need the value afterwards.
-  (PR #300 stops `run.py` from clobbering an explicit `BU_CDP_URL`, but
+  (PR #300 stops `run.py` from clobbering an explicit `WV_CDP_URL`, but
   the daemon env still gets set.)
 - **`liveUrl` is single-session** — after stop, the URL no longer
   resolves; don't cache across calls.
