@@ -17,7 +17,7 @@ not yet mapped. All notes below are PC unless stated otherwise.
   dates are available pre-login from `window.__NUXT__` SSR state.
 
 **Practical implication:** `http_get` is useless for prices. You need a
-browser session AND a logged-in user. `browser-harness` connecting to the
+browser session AND a logged-in user. `wine-view` connecting to the
 user's daily Chrome is the cheapest way — once they log in once via
 `passport.ly.com`, the cookie sticks across runs.
 
@@ -63,7 +63,7 @@ SPA handler reliably. Two patterns that work:
 
 1. **Coordinate click** (preferred — same shape as the rest of harness):
    ```python
-   from browser_harness.helpers import js, click_at_xy
+   from wine_view.helpers import js, click_at_xy
    btns = js("""
      return Array.from(document.querySelectorAll("div"))
        .filter(el => (el.innerText||"").trim() === "搜索")
@@ -202,7 +202,7 @@ done = "passport.ly.com" not in url and "login" not in url.lower()
 > document body isn't ready. Wrap each poll in try/except and continue.
 
 Cookies set by `passport.ly.com` are scoped to `.ly.com` and persist in the
-user's Chrome profile. They survive across `browser-harness` runs and across
+user's Chrome profile. They survive across `wine-view` runs and across
 Chrome restarts. There is no need to re-login per session.
 
 ---
@@ -248,7 +248,7 @@ Until one of these is mapped, **prefer DOM extraction over network sniffing.**
 ```python
 from urllib.parse import quote
 import time, json
-from browser_harness.helpers import new_tab, wait_for_load, js, page_info, cdp
+from wine_view.helpers import new_tab, wait_for_load, js, page_info, cdp
 
 HOTEL_ID = "92963586"   # 和颐至尊酒店(上海新国际博览中心世博园店)
 url = f"https://www.ly.com/hotel/hoteldetail?hotelId={HOTEL_ID}&inDate=2026-04-29&outDate=2026-04-30"

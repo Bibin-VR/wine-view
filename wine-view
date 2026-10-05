@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+DEV_ID="$(printf '%s' "$ROOT" | cksum | awk '{print $1}')"
+NAME="${WV_NAME:-default}"
+
+case "$NAME" in
+  ""|*[!A-Za-z0-9_-]*)
+    echo "invalid WV_NAME: $NAME" >&2
+    exit 2
+    ;;
+esac
+
+export WV_HOME="${WV_HOME:-$ROOT/.wine-view-dev}"
+if [ -z "${WV_RUNTIME_DIR:-}" ]; then
+  export WV_RUNTIME_DIR="/tmp/bh-dev-$DEV_ID/runtime"
+  export WV_RUNTIME_DIR_SHARED="${WV_RUNTIME_DIR_SHARED:-1}"
+fi
+if [ -z "${WV_TMP_DIR:-}" ]; then
+  export WV_TMP_DIR="$WV_HOME/tmp"
+  export WV_TMP_DIR_SHARED="${WV_TMP_DIR_SHARED:-1}"
+fi
+
+if [ -x "$ROOT/.venv/bin/python" ]; then
+  exec "$ROOT/.venv/bin/python" -m wine_view.run "$@"
+fi
+
+if command -v uv >/dev/null 2>&1; then
+  exec uv --directory "$ROOT" run python -m wine_view.run "$@"
+fi
+
+export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m wine_view.run "$@"

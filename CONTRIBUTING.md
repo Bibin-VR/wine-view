@@ -1,26 +1,26 @@
-# Contributing to Browser Harness
+# Contributing to Wine View
 
 Pull requests and improvements are welcome. Bug fixes, documentation changes,
 helper improvements, and focused domain skills are all useful.
 
 ## Development
 
-From a checkout, use `./browser-harness` to run the current working tree without
+From a checkout, use `./wine-view` to run the current working tree without
 activating a virtual environment or depending on the globally installed command:
 
 ```bash
-./browser-harness <<'PY'
+./wine-view <<'PY'
 print(page_info())
 PY
 ```
 
-Agent-facing documentation should use `browser-harness`. The `./browser-harness`
+Agent-facing documentation should use `wine-view`. The `./wine-view`
 launcher is only for testing a local checkout.
 
 ## Domain skills
 
 Domain skills teach the agent selectors, flows, and edge cases it would otherwise
-have to rediscover. Set `BH_DOMAIN_SKILLS=1` to enable them from the agent
+have to rediscover. Set `WV_DOMAIN_SKILLS=1` to enable them from the agent
 workspace.
 
 - Let the harness write skills while it works. Agent-generated skills reflect

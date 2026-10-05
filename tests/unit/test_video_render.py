@@ -1,6 +1,6 @@
 import json
 
-from browser_harness import video_render
+from wine_view import video_render
 
 
 def test_start_export_downloads_into_webm_directory(tmp_path, monkeypatch):

@@ -1,24 +1,24 @@
-# Browser Harness MCP Server
+# Wine View MCP Server
 
-The `browser-harness-mcp` command exposes `browser_harness.helpers` as MCP tools.
+The `wine-view-mcp` command exposes `wine_view.helpers` as MCP tools.
 It reuses the existing helper layer — no second CDP implementation and no changes
-inside `src/browser_harness/`.
+inside `src/wine_view/`.
 
 ## Start
 
 From any directory:
 
 ```bash
-uvx --from 'browser-harness[mcp]' browser-harness-mcp
+uvx --from 'wine-view[mcp]' wine-view-mcp
 ```
 
 The server speaks MCP stdio and connects to the same local Chrome CDP endpoint
-(9222/9223) used by `browser-harness`. The daemon auto-starts on the first tool
+(9222/9223) used by `wine-view`. The daemon auto-starts on the first tool
 call.
 
 ## Tools
 
-The browser control helpers from `browser_harness.helpers` are exposed as MCP
+The browser control helpers from `wine_view.helpers` are exposed as MCP
 tools with a `browser_` prefix:
 
 - `browser_new_tab`
@@ -60,15 +60,15 @@ server process keeps running.
 ### Claude Code
 
 ```bash
-claude mcp add browser-harness \
-  uvx --from 'browser-harness[mcp]' browser-harness-mcp
+claude mcp add wine-view \
+  uvx --from 'wine-view[mcp]' wine-view-mcp
 ```
 
 ### Devin
 
 ```bash
-devin mcp add -s project browser-harness -- \
-  uvx --from 'browser-harness[mcp]' browser-harness-mcp
+devin mcp add -s project wine-view -- \
+  uvx --from 'wine-view[mcp]' wine-view-mcp
 ```
 
 ### Cursor / OpenClaw / other MCP clients
@@ -76,12 +76,12 @@ devin mcp add -s project browser-harness -- \
 ```json
 {
   "mcpServers": {
-    "browser-harness": {
+    "wine-view": {
       "command": "uvx",
       "args": [
         "--from",
-        "browser-harness[mcp]",
-        "browser-harness-mcp"
+        "wine-view[mcp]",
+        "wine-view-mcp"
       ]
     }
   }
@@ -92,8 +92,8 @@ devin mcp add -s project browser-harness -- \
 
 ```bash
 npx @modelcontextprotocol/inspector \
-  uvx --from 'browser-harness[mcp]' browser-harness-mcp
+  uvx --from 'wine-view[mcp]' wine-view-mcp
 ```
 
-From a repository checkout, `uv run --extra mcp browser-harness-mcp` runs the
+From a repository checkout, `uv run --extra mcp wine-view-mcp` runs the
 same packaged entry point against the current source.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Initialize, compile, review, and export browser-harness recordings."""
+"""Initialize, compile, review, and export wine-view recordings."""
 
 from __future__ import annotations
 
@@ -709,12 +709,12 @@ def init_recording(recording: Path, require_explicit: bool = False) -> int:
     output.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     write_source_manifest(recording)
     print(f"summary: {output}")
-    print(f"next: write {recording / 'edit-brief.json'}, then run browser-harness video review")
+    print(f"next: write {recording / 'edit-brief.json'}, then run wine-view video review")
     return 0
 
 
 def run_cli(args: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="browser-harness video")
+    parser = argparse.ArgumentParser(prog="wine-view video")
     sub = parser.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init", help="prepare a recording for editing")
     init.add_argument("recording", type=Path)

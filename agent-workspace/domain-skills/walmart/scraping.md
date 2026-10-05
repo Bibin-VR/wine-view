@@ -329,17 +329,17 @@ Walmart uses **PerimeterX** (app ID `PXu6b0qd2S`, confirmed in `runtimeConfig.pe
 Detection in code:
 ```python
 if "Robot or human" in html:
-    raise RuntimeError("PerimeterX challenge — switch to browser harness")
+    raise RuntimeError("PerimeterX challenge — switch to wine view")
 ```
 
 If `http_get` starts returning the challenge after a run of successful fetches, switch to the
-browser harness (see below).
+wine view (see below).
 
 ---
 
-## Browser Harness Fallback
+## Wine View Fallback
 
-Use the browser harness when:
+Use the wine view when:
 - PerimeterX starts blocking `http_get` on your IP
 - You need to interact with the page (add to cart, filter UI, infinite scroll)
 - You need variant switching (color/size selectors)

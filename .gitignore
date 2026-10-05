@@ -4,7 +4,7 @@ __pycache__/
 .env
 uv.lock
 *.egg-info/
-.browser-harness-dev/
+.wine-view-dev/
 build/
 dist/
 .idea/

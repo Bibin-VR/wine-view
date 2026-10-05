@@ -1,7 +1,7 @@
 import base64
 import json
 
-from browser_harness import helpers, recorder
+from wine_view import helpers, recorder
 
 
 class _FakeCDP:

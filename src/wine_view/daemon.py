@@ -1,4 +1,4 @@
-"""CDP WS holder + IPC relay (Unix socket on POSIX, TCP loopback on Windows). One daemon per BU_NAME."""
+"""CDP WS holder + IPC relay (Unix socket on POSIX, TCP loopback on Windows). One daemon per WV_NAME."""
 import asyncio, json, os, platform, socket, sys, time, urllib.error, urllib.request
 from urllib.parse import urlparse
 from collections import deque
@@ -30,7 +30,7 @@ def _load_env_file(p):
 
 _load_env()
 
-NAME = os.environ.get("BU_NAME", "default")
+NAME = os.environ.get("WV_NAME", "default")
 SOCK = ipc.sock_addr(NAME)
 LOG = str(ipc.log_path(NAME))
 PID = str(ipc.pid_path(NAME))
@@ -111,10 +111,10 @@ def profile_dirs(system=None):
 
 PROFILES = profile_dirs()
 INTERNAL = ("chrome://", "chrome-untrusted://", "devtools://", "chrome-extension://", "about:")
-BU_API = "https://api.browser-use.com/api/v3"
-REMOTE_ID = os.environ.get("BU_BROWSER_ID")
+WV_API = "https://api.browser-use.com/api/v3"
+REMOTE_ID = os.environ.get("WV_BROWSER_ID")
 _REMOTE_STOPPED = False
-BROWSER_KIND = "cloud" if REMOTE_ID else ("cdp" if (os.environ.get("BU_CDP_WS") or os.environ.get("BU_CDP_URL")) else "local")
+BROWSER_KIND = "cloud" if REMOTE_ID else ("cdp" if (os.environ.get("WV_CDP_WS") or os.environ.get("WV_CDP_URL")) else "local")
 # Chrome 144+ shows a per-connection popup, and the connection that raised it is
 # the only thing keeping it on screen. There is deliberately no approval
 # deadline: expiry would drop the sheet and make a later attempt create another
@@ -127,12 +127,12 @@ TOGGLE_BOOT_GRACE = 12
 # Cancellation should make an in-flight CDP call finish immediately. Keep the
 # drain bounded anyway so shutdown fails closed if a client ignores cancellation.
 RECOVERY_CANCEL_DRAIN_TIMEOUT = 2
-TAB_MARKER_JS = "if(!document.title.startsWith('\U0001F434'))document.title='\U0001F434 '+document.title"
+TAB_MARKER_JS = "if(!document.title.startsWith('\U0001F377'))document.title='\U0001F377 '+document.title"
 
 
 def tab_marker_enabled():
     """Whether the cosmetic controlled-tab title marker should be added."""
-    return os.environ.get("BH_TAB_MARKER", "").strip().lower() not in {"0", "false", "no", "off"}
+    return os.environ.get("WV_TAB_MARKER", "").strip().lower() not in {"0", "false", "no", "off"}
 
 
 def _devtools_port_live(base):
@@ -262,9 +262,9 @@ def _ws_from_devtools_active_port(http_url: str) -> str | None:
 
 
 def get_ws_url():
-    if url := os.environ.get("BU_CDP_WS"):
+    if url := os.environ.get("WV_CDP_WS"):
         return url
-    if url := os.environ.get("BU_CDP_URL"):
+    if url := os.environ.get("WV_CDP_URL"):
         # HTTP DevTools endpoint (e.g. http://127.0.0.1:9333) — resolve to ws via /json/version.
         # Use this for a dedicated automation Chrome on a non-default profile, which avoids the
         # M144 "Allow remote debugging" dialog and the M136 default-profile lockdown.
@@ -287,7 +287,7 @@ def get_ws_url():
         hint = "is the dedicated automation Chrome running? Launch it with --remote-debugging-port=<port> --user-data-dir=<dedicated dir>"
         if platform.system() == "Windows":
             hint += "; on Windows also check that a firewall/antivirus isn't blocking localhost connections"
-        raise RuntimeError(f"BU_CDP_URL={url} unreachable after 30s: {last_err} -- {hint}")
+        raise RuntimeError(f"WV_CDP_URL={url} unreachable after 30s: {last_err} -- {hint}")
     deadline = time.time() + 30
     next_liveness_check = 0.0
     while time.time() < deadline:
@@ -339,7 +339,7 @@ def get_ws_url():
             continue
     if remote_debugging_user_enabled() is False:
         raise RuntimeError('remote debugging is turned off for this browser instance — enable chrome://inspect/#remote-debugging (tick "Allow remote debugging for this browser instance")')
-    raise RuntimeError(f"DevToolsActivePort not found in {[str(p) for p in PROFILES]} — enable chrome://inspect/#remote-debugging, or set BU_CDP_WS for a remote browser")
+    raise RuntimeError(f"DevToolsActivePort not found in {[str(p) for p in PROFILES]} — enable chrome://inspect/#remote-debugging, or set WV_CDP_WS for a remote browser")
 
 
 def stop_remote(strict=False):
@@ -351,9 +351,9 @@ def stop_remote(strict=False):
     last_error = None
     for attempt in range(3):
         try:
-            key = auth.get_browser_use_api_key()
+            key = auth.get_wine_view_api_key()
             req = urllib.request.Request(
-                f"{BU_API}/browsers/{REMOTE_ID}",
+                f"{WV_API}/browsers/{REMOTE_ID}",
                 data=json.dumps({"action": "stop"}).encode(),
                 method="PATCH",
                 headers={"X-Browser-Use-API-Key": key, "Content-Type": "application/json"},
@@ -442,7 +442,7 @@ class Daemon:
     async def attach_first_page(self, replaces_session=None, enable_domains=True):
         """Attach to a real page (or any page). Sets self.session. Returns attached target or None."""
         targets = (await self.cdp.send_raw("Target.getTargets"))["targetInfos"]
-        # Named daemons (BU_NAME != "default") share one browser with other
+        # Named daemons (WV_NAME != "default") share one browser with other
         # daemons — attaching to the first page makes parallel daemons fight
         # over a single tab (navigations clobber each other). Give each named
         # daemon its own dedicated tab instead. REMOTE_ID (cloud) browsers are
@@ -643,7 +643,7 @@ class Daemon:
         try:
             await self.cdp.start()
         except Exception as e:
-            if os.environ.get("BU_CDP_WS"):
+            if os.environ.get("WV_CDP_WS"):
                 raise RuntimeError(
                     f"CDP WS handshake failed: {e} -- remote browser WebSocket connection failed. "
                     "This can happen when network policy blocks the connection, the WS URL is wrong or expired, or the remote endpoint is down. "
@@ -652,7 +652,7 @@ class Daemon:
             if BROWSER_KIND == "local" and ("timed out" in str(e).lower() or "403" in str(e)) and remote_debugging_user_enabled():
                 raise RuntimeError(
                     "permission-blocked: Chrome did not approve the remote debugging connection; "
-                    "browser-harness did not retry or create another connection"
+                    "wine-view did not retry or create another connection"
                 )
             raise RuntimeError(f"CDP WS handshake failed: {e} -- click Allow in Chrome if prompted, then retry")
         await self.attach_first_page()
@@ -732,7 +732,7 @@ class Daemon:
                 tasks.append(disable_old())
             tasks.append(self._enable_default_domains(new_session))
             await asyncio.gather(*tasks)
-            # 🐴 tab-marker title prefix is purely cosmetic — fire-and-forget so
+            # 🍷 tab-marker title prefix is purely cosmetic — fire-and-forget so
             # it doesn't add to the synchronous IPC budget.
             self._schedule_tab_marker(new_session)
             return {"session_id": new_session}

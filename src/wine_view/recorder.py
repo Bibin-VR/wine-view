@@ -2,7 +2,7 @@
 
 A recording is just a folder:
 
-    <BH_AGENT_WORKSPACE>/recordings/<name>/
+    <WV_AGENT_WORKSPACE>/recordings/<name>/
       meta.json      # {name, title, started}
       events.jsonl   # one JSON object per action: helper, coords/text,
                      # url, viewport, focused-element box, frame filename
@@ -13,9 +13,9 @@ active state across CLI invocations (the daemon is untouched). run.py calls
 observe() after every traced helper; only helpers in ACTIONS produce a
 frame. Recording failures are swallowed — they must never break the run.
 
-Automatic recording is an opt-in preference stored under the browser-harness
-config directory. BH_RECORD=1/0 overrides it for one process. Explicit
-start_recording() always works unless BH_RECORD=0 is set.
+Automatic recording is an opt-in preference stored under the wine-view
+config directory. WV_RECORD=1/0 overrides it for one process. Explicit
+start_recording() always works unless WV_RECORD=0 is set.
 
 Turning a recording into a video is the make-video skill's job:
 interaction-skills/make-video.md.
@@ -84,14 +84,14 @@ def _load_config():
 
 
 def _env_override():
-    raw = os.environ.get("BH_RECORD")
+    raw = os.environ.get("WV_RECORD")
     if raw is None:
         return None
     return raw.strip().lower() not in ("0", "false", "no", "off")
 
 
 def _marker():
-    return _recordings_root() / f".active-{os.environ.get('BU_NAME', 'default')}"
+    return _recordings_root() / f".active-{os.environ.get('WV_NAME', 'default')}"
 
 
 def start_recording(name=None, title=None):
@@ -100,7 +100,7 @@ def start_recording(name=None, title=None):
     directory. `title` is used later as the video title.
     See interaction-skills/make-video.md to turn the recording into a video."""
     if _env_override() is False:
-        raise RuntimeError("recording disabled by BH_RECORD=0")
+        raise RuntimeError("recording disabled by WV_RECORD=0")
     name = name or time.strftime("rec-%Y%m%d-%H%M%S")
     d = _recordings_root() / name
     d.mkdir(parents=True, exist_ok=True)
@@ -161,7 +161,7 @@ def auto_recording_setting():
     """Return (enabled, source) for the automatic recording preference."""
     override = _env_override()
     if override is not None:
-        return override, "BH_RECORD"
+        return override, "WV_RECORD"
     config = _load_config()
     if isinstance(config.get("enabled"), bool):
         return config["enabled"], "config"
@@ -178,7 +178,7 @@ def auto_recording_enabled():
 
 
 def set_auto_recording(enabled):
-    """Persist the automatic recording preference. BH_RECORD still overrides it."""
+    """Persist the automatic recording preference. WV_RECORD still overrides it."""
     path = _config_path()
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(json.dumps({"enabled": bool(enabled)}) + "\n", encoding="utf-8")
@@ -203,7 +203,7 @@ def _is_auto_recording(d):
 # recording doesn't merge unrelated sessions or grow forever.
 def _auto_idle_gap():
     try:
-        return float(os.environ.get("BH_RECORD_IDLE", "180"))
+        return float(os.environ.get("WV_RECORD_IDLE", "180"))
     except ValueError:
         return 180.0
 

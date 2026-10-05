@@ -5,7 +5,7 @@ post articles from the same React component in both contexts — the differences
 are the **URL shapes**, the **sort options**, and the **rate-limit ceiling**
 (Pages are public, so FB is a little more forgiving than in member-gated Groups).
 
-**Requires:** a real Chrome driven by Browser Harness. Logged-in is recommended
+**Requires:** a real Chrome driven by Wine View. Logged-in is recommended
 but not strictly required — FB Pages are public. Logged-out sessions get more
 aggressive "see more" gating and an interstitial login prompt that breaks the
 scroll loop after ~5 posts. Stay signed in.
@@ -197,7 +197,7 @@ print(js("""
 ## Full example — mine one Page, emit JSON for downstream tools
 
 ```bash
-cd ~/Developer/browser-harness && uv run browser-harness <<'PY'
+cd ~/Developer/wine-view && uv run wine-view <<'PY'
 import json, sys
 from urllib.parse import urlparse, parse_qs, unquote
 
