@@ -2,8 +2,10 @@
 # Wine View 🍷
 
 > Fork of [browser-use/browser-harness](https://github.com/browser-use/browser-harness) (MIT, © Browser Use), renamed to wine-view. Telemetry and the PyPI update check are removed: it sends nothing anywhere except the sites you drive and, only if you opt in with an API key, Browser Use Cloud.
+>
+> On macOS you do not have to enable remote debugging in Chrome. Each agent session starts its own Chrome from the profile you pick. See [Remote debugging](#remote-debugging).
 
-Connect an LLM directly to your real browser through one editable CDP websocket. The agent writes missing helpers as it works, so the harness improves with every task.
+Connect an LLM directly to a real browser through one editable CDP connection. The agent writes missing helpers as it works, so the harness improves with every task.
 
 Paste the setup prompt into your coding agent.
 
@@ -35,12 +37,24 @@ wine-view is [browser-use/browser-harness](https://github.com/browser-use/browse
 | Telemetry | PostHog events on every command (opt-out) | **removed** (`telemetry.py` is a no-op stub) |
 | Update check | daily PyPI version check | **removed**; update with `git pull` |
 | First attach on local Chrome | attaches to your first open tab (slow if it is a busy background tab) | opens/reuses its own blank background tab — never touches your tabs (fresh start ~13s → ~1.9s) |
-| Chrome "Allow remote debugging?" prompt | click Allow or run `mac-approve` | optional auto-allow: set `WV_AUTO_APPROVE=1` (macOS, needs Accessibility permission for your terminal) |
+| Chrome "Allow remote debugging?" prompt (shown only when attaching to your own Chrome) | click Allow or run `mac-approve` | optional auto-allow: set `WV_AUTO_APPROVE=1` (macOS, needs Accessibility permission for your terminal) |
 | Default browser on macOS | your running Chrome, after you enable remote debugging at `chrome://inspect` | a separate Chrome for each agent session, started by wine-view on a throwaway profile and driven over a private pipe. Nothing has to be enabled in Chrome, and there is no debugging port or approval prompt |
 | Sign-ins in that Chrome | whatever your running Chrome has | copied from the Chrome profile you pick, or none with `fresh`. The agent has to ask you which one |
 | Headless | no switch for a local browser | `WV_HEADLESS=1` starts the session's Chrome with no window |
 
 Nothing is sent anywhere except the sites you drive, plus Browser Use Cloud only if you set `WINE_VIEW_API_KEY`.
+
+### Remote debugging
+
+Whether you have to enable remote debugging depends on which Chrome wine-view drives.
+
+| wine-view drives | Enable remote debugging in Chrome? |
+|---|---|
+| Its own Chrome for each agent session, the default on macOS | No |
+| Your own running Chrome: `WV_CDP_WS=` with an empty value on macOS, and the default on Linux and Windows | Yes, at `chrome://inspect/#remote-debugging` |
+| Its own Chrome on Linux with `WV_CDP_WS=pipe` (untested) | No |
+
+Every mode uses the Chrome DevTools Protocol. In the default macOS mode wine-view starts Chrome with `--remote-debugging-pipe` and holds the other end of that pipe, so Chrome opens no debugging port and your own Chrome is not involved. If you never attach to your own Chrome, you can leave remote debugging switched off in it.
 
 ### One Chrome per agent session
 
@@ -95,15 +109,17 @@ git fetch upstream && git merge upstream/main   # then re-apply the rename to ne
 Paste into Claude Code or Codex:
 
 ```text
-Install or upgrade wine-view to the latest stable version with uv using Python 3.12, register the skill from `wine-view skill`, and connect it to my browser. Ask whether I want local browser recordings enabled; default to no and preserve my existing preference on upgrades. Follow https://github.com/Bibin-VR/wine-view/blob/main/install.md if setup or connection fails.
+Install or upgrade wine-view to the latest stable version with uv using Python 3.12, register the skill from `wine-view skill`, and connect it to my browser. Ask whether I want local browser recordings enabled; default to no and preserve my existing preference on upgrades. Follow https://github.com/Bibin-VR/wine-view/blob/wine-view/install.md if setup or connection fails.
 ```
 
-On macOS this fork starts its own Chrome and skips the step below. The step
-still applies on Linux and Windows, and on macOS when you attach to your
-running Chrome with `WV_CDP_WS=`.
+On macOS there is nothing to enable in Chrome. The first browser command asks
+which Chrome profile to start from.
 
-The agent will open `chrome://inspect/#remote-debugging`. On first setup, tick
-the checkbox so the agent can connect to your browser:
+### If you attach to your own running Chrome
+
+This is the default on Linux and Windows, and what `WV_CDP_WS=` (an empty
+value) selects on macOS. The agent will open `chrome://inspect/#remote-debugging`.
+On first setup, tick the checkbox so the agent can connect to your browser:
 
 <img src="docs/setup-remote-debugging.png" alt="Remote debugging setup" width="520" style="border-radius: 12px;" />
 
