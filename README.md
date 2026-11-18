@@ -1,7 +1,7 @@
 
 # Wine View 🍷
 
-> Fork of [browser-use/browser-harness](https://github.com/browser-use/browser-harness) (MIT, © Browser Use), renamed to wine-view. Telemetry and the PyPI update check are removed: it sends nothing anywhere except the sites you drive and, only if you opt in with an API key, Browser Use Cloud.
+> Based on [browser-harness](https://github.com/browser-use/browser-harness) by Browser Use (MIT). wine-view has no telemetry and no update check: it sends nothing anywhere except the sites you drive and, only if you opt in with an API key, Browser Use Cloud.
 >
 > On macOS you do not have to enable remote debugging in Chrome. Each agent session starts its own Chrome from the profile you pick. See [Remote debugging](#remote-debugging).
 
@@ -22,11 +22,11 @@ Paste the setup prompt into your coding agent.
 **You will never use the browser again.**
 
 
-## What's different in this fork
+## How it differs from browser-harness
 
-wine-view is [browser-use/browser-harness](https://github.com/browser-use/browser-harness) 0.1.13 (MIT, © Browser Use), renamed and made private-by-default:
+wine-view started as [browser-harness](https://github.com/browser-use/browser-harness) 0.1.13 and is now a separate project. The differences:
 
-| Change | Upstream | wine-view |
+| Change | browser-harness | wine-view |
 |---|---|---|
 | CLI | `browser-harness`, `browser-harness-mcp` | `wine-view`, `wine-view-mcp` |
 | Python package | `browser_harness` | `wine_view` |
@@ -92,17 +92,12 @@ ln -s ~/Developer/wine-view/skills/wine-view ~/.claude/skills/wine-view   # Clau
 
 On macOS nothing has to be enabled in Chrome; the first browser command asks which profile to start from, as described above. On Linux and Windows, and on macOS with `WV_CDP_WS=`, wine-view attaches to your running Chrome, so enable remote debugging at `chrome://inspect/#remote-debugging` first. To stop auto-allowing, unset `WV_AUTO_APPROVE`; to cut access entirely, turn remote debugging off.
 
-### Syncing with upstream
+### Taking changes from browser-harness
 
 ```bash
+git remote add upstream https://github.com/browser-use/browser-harness.git   # once
 git fetch upstream && git merge upstream/main   # then re-apply the rename to new text, run `pytest tests/unit`, and check no telemetry/update calls came back
 ```
-
-## See it work
-
-**Task:** "Open my X profile, find my latest 20 video posts, and download them."
-
-[![Download my latest 20 X videos](docs/download-latest-20-x-videos.gif)](https://browser-use.com/showcase/videos/download-latest-20-x-videos.mp4)
 
 ## Setup prompt
 
@@ -129,10 +124,6 @@ On first setup, tick the checkbox so the agent can connect to your browser:
 - [`SKILL.md`](SKILL.md) teaches it the browser workflow.
 - [`src/wine_view/`](src/wine_view/) stays protected while the agent writes reusable helpers in its local workspace.
 
-## Scale with Browser Use Cloud
-
-Use your local browser for logged-in, personal work. When you want many browsers in parallel—with live previews, proxies, stealth, CAPTCHA solving, and more—scale with [Browser Use Cloud](https://cloud.browser-use.com/new-api-key).
-
 ## MCP server
 
 `wine-view-mcp` exposes the browser control helpers as MCP tools over
@@ -144,6 +135,6 @@ setup and client configuration.
 
 Bug fixes, documentation improvements, and agent-generated domain skills are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
----
+## License
 
-[The Bitter Lesson of Agent Harnesses](https://browser-use.com/posts/bitter-lesson-agent-harnesses) · [Web Agents That Actually Learn](https://browser-use.com/posts/web-agents-that-actually-learn)
+MIT. Copyright (c) 2026 Bibin V R. wine-view is based on [browser-harness](https://github.com/browser-use/browser-harness), Copyright (c) 2026 Browser Use, also MIT. Both notices are in [LICENSE](LICENSE).
