@@ -32,7 +32,7 @@ If an old user-installed `browser` or `browser-use` skill is being picked instea
 
 ## Connect to a browser
 
-`wine-view` attaches to a Chrome you already have running, or to a Browser Use cloud browser. Quick check:
+On macOS `wine-view` starts its own Chrome for each agent session. Elsewhere, or with `WV_CDP_WS=` (empty), it attaches to a Chrome you already have running. It can also drive a Browser Use cloud browser. Quick check:
 
 ```bash
 wine-view <<'PY'
@@ -40,7 +40,7 @@ print(page_info())
 PY
 ```
 
-If that prints page info, you're done. If not, run `wine-view --doctor` and follow the connection cases. The two connection methods:
+If that prints page info, you're done. If it stops with `profile-choice-needed` (macOS), ask the user which of the listed Chrome profiles to start from, run `wine-view profile use "<folder>"` or `wine-view profile use fresh`, and retry. Otherwise run `wine-view --doctor` and follow the connection cases. The two ways to attach to a running Chrome:
 
 - **Way 1 (real browser):** open Chrome normally, then open `chrome://inspect/#remote-debugging` and tick "Allow remote debugging for this browser instance". On Chrome 144+, click Allow on the first-attach popup. Inherits your logins/extensions — best when the agent acts in your everyday browser.
 - **Way 2 (isolated profile, no popups):** launch Chrome with `--remote-debugging-port=9222 --user-data-dir=<non-default path>`, then set `WV_CDP_URL=http://127.0.0.1:9222`. Best for unattended automation.

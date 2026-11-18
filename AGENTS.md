@@ -30,7 +30,8 @@ From a **git checkout** (no global install required for local testing):
 # doctor — install/daemon/browser state
 ./wine-view --doctor
 
-# smoke — CDP attach + page_info (Chrome remote debugging must be allowed)
+# smoke — page_info (macOS: own Chrome, once the user has picked a profile;
+# with WV_CDP_WS= or elsewhere: CDP attach, Chrome remote debugging must be allowed)
 ./wine-view <<'PY'
 print(page_info())
 PY

@@ -51,6 +51,9 @@ Commands:
   wine-view doctor --json [--require-existing-daemon]
                                     print machine-readable runtime health
   wine-view doctor --fix-snap   print how to fix Snap Chromium blocking CDP (Linux)
+  wine-view profile             list the user's Chrome profiles and this session's choice
+  wine-view profile use <folder>|fresh
+                                    what this session's own Chrome starts from (the user decides)
   wine-view mac-approve         approve Chrome's macOS remote debugging sheet
   wine-view auth login          sign in to Browser Use Cloud for cloud browsers
   wine-view auth login --device-code   sign in from SSH/headless environments
@@ -130,9 +133,34 @@ def _telemetry_command(args):
         return "reload"
     if first == "--debug-clicks":
         return "debug-clicks"
-    if first in {"auth", "skill", "mac-approve", "recordings", "telemetry", "video"}:
+    if first in {"auth", "skill", "mac-approve", "profile", "recordings", "telemetry", "video"}:
         return first
     return "usage"
+
+
+def _profile_command(rest):
+    """Show or record which of the user's Chrome profiles this session's own Chrome starts from."""
+    from . import daemon
+
+    profiles = daemon.chrome_profiles()
+    if rest[:1] == ["use"] and len(rest) == 2:
+        choice = rest[1]
+        if choice != "fresh" and choice not in dict(profiles):
+            print(f"unknown profile {choice!r} -- run `wine-view profile` for the folders", file=sys.stderr)
+            return 2
+        daemon.profile_choice_path(NAME).write_text(choice, encoding="utf-8")
+        if daemon_alive():
+            restart_daemon()  # the running Chrome was started from the previous choice
+        print(f"this session's Chrome will start from: {choice}")
+        return 0
+    if rest:
+        print("usage: wine-view profile [use <folder>|fresh]", file=sys.stderr)
+        return 2
+    print(f"chosen for this session: {daemon.profile_choice(NAME) or '(not chosen yet)'}")
+    for folder, name in profiles:
+        print(f"  {folder!r:14} {name}")
+    print(f"  {'fresh'!r:14} new signed-out profile")
+    return 0
 
 
 def _exit_code(result) -> int:
@@ -323,6 +351,8 @@ def _run(args):
         sys.exit(run_doctor())
     if args and args[0] == "auth":
         sys.exit(auth.run_auth_cli(args[1:]))
+    if args and args[0] == "profile":
+        sys.exit(_profile_command(args[1:]))
     if args and args[0] == "mac-approve":
         from . import macos
 

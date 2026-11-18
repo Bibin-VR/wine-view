@@ -421,6 +421,205 @@ class _PatientCDPClient(CDPClient):
         self._message_handler_task = asyncio.create_task(self._handle_messages())
 
 
+# --- own Chrome over a private pipe (WV_CDP_WS=pipe) ---
+_OWN_CHROME_FLAGS = (
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--no-startup-window",  # tabs open in the background, so launch never takes the user's focus
+    "--disable-backgrounding-occluded-windows",  # a covered window keeps running at full speed
+)
+# WV_HEADLESS=1: no window at all. Sized so pages get the same 1200x964 area as the windowed default.
+_HEADLESS_FLAGS = ("--headless=new", "--window-size=1200,1051")
+_OWN_CHROME = None  # (Popen, profile dir) once this daemon has launched its own Chrome
+
+
+_SIGN_IN_STATE = ("Cookies", "Cookies-journal", "Network", "Local Storage", "IndexedDB")
+
+
+def chrome_profiles():
+    """[(folder, name)] of the user's own Chrome profiles, most recently used first."""
+    try:
+        cache = json.loads((PROFILES[0] / "Local State").read_text(encoding="utf-8", errors="replace"))["profile"]["info_cache"]
+        rows = [(-(info.get("active_time") or 0), folder, info.get("name") or folder) for folder, info in cache.items()]
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return []
+    return [(folder, name) for _, folder, name in sorted(rows) if (PROFILES[0] / folder).is_dir()]
+
+
+def profile_choice_path(name=NAME):
+    return ipc.pid_path(name).with_suffix(".profile")
+
+
+def profile_choice(name=NAME):
+    """'fresh', a folder from chrome_profiles(), or None while the user has not been asked."""
+    try:
+        return os.environ.get("WV_PROFILE") or profile_choice_path(name).read_text(encoding="utf-8").strip() or None
+    except OSError:
+        return None
+
+
+def profile_prompt():
+    rows = "\n".join(f"  {folder!r:14} {name}" for folder, name in chrome_profiles())
+    return (
+        "profile-choice-needed: this session's Chrome has no profile yet. Ask the user which of their "
+        "Chrome profiles it should start from (never choose for them), then run "
+        '`wine-view profile use "<folder>"` (signed in as that profile) or `wine-view profile use fresh` '
+        "(signed out) and retry.\nProfiles, most recently used first:\n" + rows
+    )
+
+
+def _users_chrome_binary():
+    """Executable of the running Chrome that owns the user's profiles, so a copy opens in the same build."""
+    import subprocess
+    try:
+        pid = os.readlink(str(PROFILES[0] / "SingletonLock")).rsplit("-", 1)[-1]
+        return subprocess.check_output(["ps", "-o", "comm=", "-p", pid], text=True, timeout=5).strip()
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _chrome_binary():
+    import shutil
+    candidates = [os.environ.get("WV_CHROME_PATH"), os.environ.get("CHROME_PATH"), _users_chrome_binary()]
+    if platform.system() == "Darwin":
+        candidates.append("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+    candidates += [shutil.which(c) for c in ("google-chrome-stable", "google-chrome", "chromium", "chromium-browser")]
+    for raw in candidates:
+        if raw and Path(raw.strip()).expanduser().is_file():
+            return str(Path(raw.strip()).expanduser())
+    raise RuntimeError("no Chrome binary found -- set WV_CHROME_PATH")
+
+
+def _pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except OSError:
+        return True  # exists, but belongs to another user
+
+
+def _owner_pid():
+    """The agent session process an own-Chrome daemon belongs to (Claude Code exports CLAUDE_PID)."""
+    raw = os.environ.get("CLAUDE_PID", "")
+    return int(raw) if raw.isdigit() and int(raw) > 1 and _pid_alive(int(raw)) else None
+
+
+def _own_profile():
+    """Throwaway user-data-dir for this daemon's Chrome; sweeps the ones no Chrome holds.
+
+    Empty for 'fresh'. Otherwise it starts from a copy of the chosen profile's sign-in state
+    only (cookies and site storage): no saved passwords, payment data, history or extensions.
+    """
+    import shutil, subprocess, tempfile
+    root = paths.tmp_dir() / "chrome"
+    root.mkdir(parents=True, exist_ok=True)
+    for old in root.iterdir():
+        try:
+            idle = time.time() - old.stat().st_mtime
+        except OSError:
+            continue
+        # 60s grace: a sibling daemon's Chrome may not have taken its SingletonLock yet.
+        if idle > 60 and not browser_running_for_profile(old):
+            shutil.rmtree(old, ignore_errors=True)
+    profile = Path(tempfile.mkdtemp(prefix=f"{NAME}-", dir=root))
+    choice = profile_choice()
+    if choice and choice != "fresh":
+        source = PROFILES[0] / choice
+        if choice not in dict(chrome_profiles()):
+            raise RuntimeError(f"Chrome profile {choice!r} not found -- run `wine-view profile` to list them")
+        (profile / "Default").mkdir()
+        for entry in _SIGN_IN_STATE:
+            src, dst = source / entry, profile / "Default" / entry
+            if not src.exists():
+                continue
+            if platform.system() == "Darwin":
+                # -c: APFS clone, so a large IndexedDB costs neither time nor disk.
+                subprocess.run(["cp", "-cR", str(src), str(dst)], check=True, capture_output=True)
+            elif src.is_dir():
+                shutil.copytree(src, dst)
+            else:
+                shutil.copy2(src, dst)
+    # Named Ø so it cannot be mistaken for one of the user's own profiles.
+    (profile / "Local State").write_text(
+        json.dumps({"profile": {"info_cache": {"Default": {"name": "Ø", "is_using_default_name": False}}}})
+    )
+    return profile
+
+
+def _close_own_chrome():
+    """Stop the Chrome this daemon launched and delete its throwaway profile."""
+    if _OWN_CHROME is None:
+        return
+    import shutil, subprocess
+    proc, profile = _OWN_CHROME
+    proc.terminate()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+    shutil.rmtree(profile, ignore_errors=True)
+
+
+class _ChromePipe:
+    """Websocket-shaped link to a Chrome this daemon launches for itself (POSIX only).
+
+    --remote-debugging-pipe carries CDP as NUL-terminated JSON on the child's fd 3 (in) and
+    fd 4 (out). There is no port and no chrome://inspect step, so nothing else can attach,
+    and Chrome exits as soon as this daemon's end of the pipe closes.
+    """
+
+    @classmethod
+    async def launch(cls, max_message):
+        import fcntl, subprocess
+        global _OWN_CHROME
+        self = cls()
+        chrome, profile = _chrome_binary(), _own_profile()
+        to_chrome, mine_out = os.pipe()
+        mine_in, from_chrome = os.pipe()
+        # sh maps the child's ends onto fd 3/4. Park them above 9 first so the two
+        # redirections cannot collide with each other.
+        child_in, child_out = (fcntl.fcntl(fd, fcntl.F_DUPFD, 10) for fd in (to_chrome, from_chrome))
+        headless = os.environ.get("WV_HEADLESS", "").strip().lower() in {"1", "true", "yes", "on"}
+        proc = subprocess.Popen(
+            ["/bin/sh", "-c", f'exec "$@" 3<&{child_in} 4>&{child_out}', "sh", chrome,
+             "--remote-debugging-pipe", f"--user-data-dir={profile}", *_OWN_CHROME_FLAGS,
+             *(_HEADLESS_FLAGS if headless else ())],
+            pass_fds=(child_in, child_out), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        _OWN_CHROME = (proc, profile)
+        for fd in (to_chrome, from_chrome, child_in, child_out):
+            os.close(fd)
+        loop = asyncio.get_running_loop()
+        self.reader = asyncio.StreamReader(limit=max_message)
+        await loop.connect_read_pipe(lambda: asyncio.StreamReaderProtocol(self.reader), os.fdopen(mine_in, "rb", 0))
+        transport, protocol = await loop.connect_write_pipe(asyncio.streams.FlowControlMixin, os.fdopen(mine_out, "wb", 0))
+        self.writer = asyncio.StreamWriter(transport, protocol, None, loop)
+        return self
+
+    async def send(self, message):
+        self.writer.write(message.encode() + b"\0")
+        await self.writer.drain()
+
+    async def recv(self):
+        return (await self.reader.readuntil(b"\0"))[:-1]
+
+    async def close(self):
+        self.writer.close()
+
+
+class _PipeCDPClient(CDPClient):
+    """CDPClient whose transport is _ChromePipe rather than a websocket."""
+
+    async def start(self):
+        import websockets.exceptions  # noqa: F401 -- cdp_use's reader names it in an except clause
+        self.ws = await _ChromePipe.launch(self.max_ws_frame_size)
+        self._message_handler_task = asyncio.create_task(self._handle_messages())
+        await asyncio.wait_for(self.send_raw("Browser.getVersion"), 30)  # fail fast if Chrome never answers
+
+
 class Daemon:
     def __init__(self):
         self.cdp = None
@@ -637,14 +836,20 @@ class Daemon:
     async def start(self):
         self.stop = asyncio.Event()
         url = get_ws_url()
-        log(f"connecting to {_safe_connection_label(url)}")
-        self.cdp = _PatientCDPClient(url) if BROWSER_KIND == "local" else CDPClient(url)
+        own = url == "pipe"
+        log("launching this session's own Chrome (private pipe)" if own else f"connecting to {_safe_connection_label(url)}")
+        if own:
+            self.cdp = _PipeCDPClient(url)
+        else:
+            self.cdp = _PatientCDPClient(url) if BROWSER_KIND == "local" else CDPClient(url)
         if BROWSER_KIND == "local":
             # Allow while this handshake is still parked on the popup
             log("handshake-wait: if Chrome shows an 'Allow remote debugging?' popup, click Allow")
         try:
             await self.cdp.start()
         except Exception as e:
+            if own:
+                raise RuntimeError(f"could not start this session's own Chrome: {e!r}")
             if os.environ.get("WV_CDP_WS"):
                 raise RuntimeError(
                     f"CDP WS handshake failed: {e} -- remote browser WebSocket connection failed. "
@@ -658,11 +863,26 @@ class Daemon:
                 )
             raise RuntimeError(f"CDP WS handshake failed: {e} -- click Allow in Chrome if prompted, then retry")
         await self.attach_first_page()
+        if own:
+            # On a cold machine the first renderer can take 15s+ to come up. Absorb that here,
+            # inside startup's 60s budget, not in the caller's first 5s helper call.
+            await _silent(asyncio.wait_for(
+                self.cdp.send_raw("Runtime.evaluate", {"expression": "1"}, session_id=self.session), 30
+            ))
         orig = self.cdp._event_registry.handle_event
         async def tap(method, params, session_id=None):
             self._record_event(method, params, session_id)
             return await orig(method, params, session_id)
         self.cdp._event_registry.handle_event = tap
+        if own and (owner := _owner_pid()):
+            self._owner_watch = asyncio.create_task(self._stop_with_owner(owner))
+
+    async def _stop_with_owner(self, pid):
+        """An own-Chrome daemon ends with the agent session that started it."""
+        while _pid_alive(pid):
+            await asyncio.sleep(5)
+        log(f"owner process {pid} exited; closing this session's Chrome")
+        self.stop.set()
 
     async def handle(self, req):
         # Token guard for Windows TCP loopback: any local process can otherwise
@@ -892,5 +1112,6 @@ if __name__ == "__main__":
         sys.exit(1)
     finally:
         stop_remote()
+        _close_own_chrome()
         try: os.unlink(PID)
         except FileNotFoundError: pass

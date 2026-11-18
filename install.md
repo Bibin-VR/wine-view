@@ -20,6 +20,8 @@ PY
 
 If `page_info()` prints, configure recording consent below, then stop.
 
+On macOS the first browser command stops with `profile-choice-needed` and lists the user's Chrome profiles, because each agent session starts its own Chrome there. Ask the user which profile to start from, run `wine-view profile use "<folder>"` or `wine-view profile use fresh`, then retry. Nothing has to be enabled in Chrome for this; see "Which Browser" in `SKILL.md`.
+
 `--python 3.12` prevents uv from selecting old releases that support older Python versions. `--upgrade --force` replaces any previous `wine-view` tool install with the latest stable release. It does not uninstall unrelated commands such as `browser-use-Browser` or `browser-use-Terminal`.
 
 For Claude Code or other agents: install `wine-view`, register a skill named `wine-view`, use `wine-view skill` as the body, and use this trigger:
@@ -44,6 +46,8 @@ run `wine-view recordings disable`. Preserve an existing `(config)` or
 `(WV_RECORD)` preference during upgrades instead of asking again.
 
 ## If Chrome Blocks It
+
+This applies only when attaching to the user's running Chrome: the default on Linux and Windows, and `WV_CDP_WS=` on macOS (keep that prefix on the commands below).
 
 In Chrome:
 
@@ -95,7 +99,7 @@ wine-view --doctor
 Use the output:
 
 - `chrome running` FAIL: ask the user to open Chrome, or use isolated/cloud browser.
-- `daemon alive` FAIL: Chrome remote debugging permission is missing, Chrome is closed, or the CDP endpoint is not reachable.
+- `daemon alive` FAIL: Chrome remote debugging permission is missing, Chrome is closed, or the CDP endpoint is not reachable. On macOS without `WV_CDP_WS=` this is expected until a browser command has started this session's own Chrome.
 - update available: run `wine-view --update -y` when you decide to upgrade.
 
 For a machine-readable health check, an orchestrator can set `WV_NAME` to an

@@ -552,6 +552,16 @@ def ensure_daemon(wait=None, name=None, env=None):
 
     import subprocess, sys
     local = _is_local_chrome_mode(env)
+    # An own-Chrome (pipe) daemon launches a browser, so it takes the spawn lock too:
+    # two cold callers must end up on one daemon and one Chrome, not start two.
+    own = {**os.environ, **(env or {})}.get("WV_CDP_WS") == "pipe"
+    locked = local or own
+    if own:
+        # The user picks which of their profiles a session's Chrome starts from; the agent
+        # never does. Until they have, refuse to start one and say what to ask.
+        from .daemon import profile_choice, profile_prompt
+        if profile_choice(name or NAME) is None:
+            raise RuntimeError(profile_prompt())
     startup_wait, approval_wait = _daemon_wait_windows(wait, local)
     # Remote/CDP daemons retain the normal 60s startup bound. Only a local
     # Chrome handshake displaying the per-connection approval sheet removes a
@@ -564,7 +574,7 @@ def ensure_daemon(wait=None, name=None, env=None):
             stderr_sink = open(ipc.log_path(name or NAME), "ab")
         except OSError:
             stderr_sink = subprocess.DEVNULL
-        if local:
+        if locked:
             with _spawn_lock(name, timeout=startup_wait) as lock:
                 if lock.fd is None:
                     raise RuntimeError("daemon-starting: another wine-view daemon is still starting; retry later")

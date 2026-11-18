@@ -845,3 +845,98 @@ def test_explicit_stale_session_is_not_redirected():
     assert d.cdp.calls == [
         ("Runtime.evaluate", {"expression": "1"}, "explicit-stale-session")
     ]
+
+
+_FAKE_CHROME = """#!{python}
+import json, os, sys
+buf = b""
+while chunk := os.read(3, 65536):
+    buf += chunk
+    while b"\\0" in buf:
+        raw, buf = buf.split(b"\\0", 1)
+        msg = json.loads(raw)
+        os.write(4, json.dumps({{"id": msg["id"], "result": {{"method": msg["method"], "argv": sys.argv[1:]}}}}).encode() + b"\\0")
+"""
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the pipe transport is POSIX only")
+@pytest.mark.parametrize("headless", ["", "1"])
+def test_own_chrome_pipe_round_trip_and_cleanup(tmp_path, monkeypatch, headless):
+    """The launched browser gets our pipe on fd 3/4, a profile named Ø, and is torn down with it."""
+    import json, sys
+
+    monkeypatch.setenv("WV_HEADLESS", headless)
+    monkeypatch.delenv("WV_PROFILE", raising=False)
+
+    fake = tmp_path / "fake-chrome"
+    fake.write_text(_FAKE_CHROME.format(python=sys.executable))
+    fake.chmod(0o755)
+    monkeypatch.setenv("WV_CHROME_PATH", str(fake))
+    monkeypatch.setattr(daemon.paths, "tmp_dir", lambda: tmp_path)
+    monkeypatch.setattr(daemon, "_OWN_CHROME", None)
+
+    async def round_trip():
+        client = daemon._PipeCDPClient("pipe")
+        await client.start()
+        return await client.send_raw("Target.getTargets")
+
+    result = asyncio.run(round_trip())
+    proc, profile = daemon._OWN_CHROME
+
+    assert result["method"] == "Target.getTargets"
+    assert "--remote-debugging-pipe" in result["argv"]
+    assert ("--headless=new" in result["argv"]) == bool(headless)
+    assert f"--user-data-dir={profile}" in result["argv"]
+    assert profile.parent == tmp_path / "chrome"
+    assert json.loads((profile / "Local State").read_text())["profile"]["info_cache"]["Default"]["name"] == "Ø"
+
+    daemon._close_own_chrome()
+    assert proc.poll() is not None
+    assert not profile.exists()
+
+
+def _fake_users_chrome(tmp_path, monkeypatch):
+    import json
+
+    chrome = tmp_path / "Chrome"
+    source = chrome / "Profile 2"
+    (source / "Local Storage").mkdir(parents=True)
+    (source / "Local Storage" / "leveldb").write_text("site storage")
+    (source / "Cookies").write_text("cookies")
+    (source / "Login Data").write_text("saved passwords")
+    (chrome / "Local State").write_text(json.dumps({"profile": {"info_cache": {"Profile 2": {"name": "Work"}}}}))
+    monkeypatch.setattr(daemon, "PROFILES", [chrome])
+    monkeypatch.setattr(daemon.paths, "tmp_dir", lambda: tmp_path / "tmp")
+    monkeypatch.delenv("WV_PROFILE", raising=False)
+
+
+def test_own_profile_copies_only_the_sign_in_state_of_the_chosen_profile(tmp_path, monkeypatch):
+    _fake_users_chrome(tmp_path, monkeypatch)
+    assert daemon.chrome_profiles() == [("Profile 2", "Work")]
+
+    monkeypatch.setenv("WV_PROFILE", "Profile 2")
+    copied = daemon._own_profile() / "Default"
+
+    assert sorted(p.name for p in copied.iterdir()) == ["Cookies", "Local Storage"]  # no Login Data
+    assert (copied / "Local Storage" / "leveldb").read_text() == "site storage"
+
+    monkeypatch.setenv("WV_PROFILE", "fresh")
+    assert not (daemon._own_profile() / "Default").exists()
+
+    monkeypatch.setenv("WV_PROFILE", "Profile 9")
+    with pytest.raises(RuntimeError, match="not found"):
+        daemon._own_profile()
+
+
+def test_own_chrome_is_not_started_until_the_user_has_chosen_a_profile(tmp_path, monkeypatch):
+    from wine_view import admin
+
+    _fake_users_chrome(tmp_path, monkeypatch)
+    monkeypatch.setattr(admin, "daemon_alive", lambda name=None: False)
+    monkeypatch.setattr(admin.subprocess, "Popen", lambda *a, **k: pytest.fail("spawned a daemon"))
+
+    with pytest.raises(RuntimeError, match="profile-choice-needed") as excinfo:
+        admin.ensure_daemon(name="unasked", env={"WV_CDP_WS": "pipe"})
+    message = str(excinfo.value)
+    assert "never choose for them" in message
+    assert "'Profile 2'" in message and "Work" in message

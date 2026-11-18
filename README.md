@@ -36,8 +36,37 @@ wine-view is [browser-use/browser-harness](https://github.com/browser-use/browse
 | Update check | daily PyPI version check | **removed**; update with `git pull` |
 | First attach on local Chrome | attaches to your first open tab (slow if it is a busy background tab) | opens/reuses its own blank background tab — never touches your tabs (fresh start ~13s → ~1.9s) |
 | Chrome "Allow remote debugging?" prompt | click Allow or run `mac-approve` | optional auto-allow: set `WV_AUTO_APPROVE=1` (macOS, needs Accessibility permission for your terminal) |
+| Default browser on macOS | your running Chrome, after you enable remote debugging at `chrome://inspect` | a separate Chrome for each agent session, started by wine-view on a throwaway profile and driven over a private pipe. Nothing has to be enabled in Chrome, and there is no debugging port or approval prompt |
+| Sign-ins in that Chrome | whatever your running Chrome has | copied from the Chrome profile you pick, or none with `fresh`. The agent has to ask you which one |
+| Headless | no switch for a local browser | `WV_HEADLESS=1` starts the session's Chrome with no window |
 
 Nothing is sent anywhere except the sites you drive, plus Browser Use Cloud only if you set `WINE_VIEW_API_KEY`.
+
+### One Chrome per agent session
+
+On macOS each agent session gets its own Chrome process on a throwaway profile named Ø. wine-view starts it in the background and talks to it over a private pipe (`--remote-debugging-pipe`). Nothing has to be enabled in Chrome, there is no debugging port or approval prompt, and a session shares no tabs or cookies with other sessions or with your own browser. A session is whatever `CLAUDE_CODE_SESSION_ID` says. Without that variable all commands share one Chrome unless they set `WV_NAME`, and parallel sub-agents each set their own `WV_NAME` to get a Chrome each.
+
+You choose which of your Chrome profiles a session starts from. The first browser command stops with `profile-choice-needed` and lists them, and the agent is told to ask you which one.
+
+```bash
+wine-view profile                  # list your profiles and this session's choice
+wine-view profile use "Profile 2"  # start from that profile's sign-ins
+wine-view profile use fresh        # start signed out
+```
+
+wine-view copies the `Cookies`, `Network`, `Local Storage` and `IndexedDB` entries from the profile folder and writes nothing back to it. Saved passwords, payment data, history and extensions are not copied. Cookies that last only until the browser closes do not carry over, so a site you signed in to without "remember me" shows as signed out. A sub-agent or an unattended run cannot ask you, so it takes the answer from `WV_PROFILE=<folder>` or `WV_PROFILE=fresh`.
+
+The Chrome closes and its profile is deleted when the session's Claude Code process exits, or on `wine-view --reload`. Its window opens behind your other windows. With `WV_HEADLESS=1` it has no window at all. That variable is read when the session's Chrome starts, so set it on every command of a task, and run `wine-view --reload` first to switch a session that is already running.
+
+Pages can tell this Chrome is automated: `navigator.webdriver` is `true`, and in headless mode the user agent says `HeadlessChrome`. A site that blocks automated browsers may refuse it. For such a site, or for a task that needs your saved passwords or extensions, attach to your own running Chrome by giving `WV_CDP_WS` an empty value on every command. That mode needs remote debugging enabled at `chrome://inspect/#remote-debugging`.
+
+```bash
+WV_CDP_WS= wine-view <<'PY'
+print(page_info())
+PY
+```
+
+This is the default on macOS only, tested on macOS 12 with Chrome 150. On Linux it is opt-in with `WV_CDP_WS=pipe` and untested. It does not work on Windows. On both, wine-view attaches to your running Chrome as before.
 
 ### Install
 
@@ -47,7 +76,7 @@ uv tool install --python 3.12 -e ~/Developer/wine-view
 ln -s ~/Developer/wine-view/skills/wine-view ~/.claude/skills/wine-view   # Claude Code skill
 ```
 
-Then enable remote debugging at `chrome://inspect/#remote-debugging`. To stop auto-allowing, unset `WV_AUTO_APPROVE`; to cut access entirely, turn remote debugging off.
+On macOS nothing has to be enabled in Chrome; the first browser command asks which profile to start from, as described above. On Linux and Windows, and on macOS with `WV_CDP_WS=`, wine-view attaches to your running Chrome, so enable remote debugging at `chrome://inspect/#remote-debugging` first. To stop auto-allowing, unset `WV_AUTO_APPROVE`; to cut access entirely, turn remote debugging off.
 
 ### Syncing with upstream
 
@@ -68,6 +97,10 @@ Paste into Claude Code or Codex:
 ```text
 Install or upgrade wine-view to the latest stable version with uv using Python 3.12, register the skill from `wine-view skill`, and connect it to my browser. Ask whether I want local browser recordings enabled; default to no and preserve my existing preference on upgrades. Follow https://github.com/Bibin-VR/wine-view/blob/main/install.md if setup or connection fails.
 ```
+
+On macOS this fork starts its own Chrome and skips the step below. The step
+still applies on Linux and Windows, and on macOS when you attach to your
+running Chrome with `WV_CDP_WS=`.
 
 The agent will open `chrome://inspect/#remote-debugging`. On first setup, tick
 the checkbox so the agent can connect to your browser:
